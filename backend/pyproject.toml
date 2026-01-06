@@ -56,6 +56,9 @@ select = [
     "UP",  # pyupgrade
     "ARG001", # unused arguments in functions
     "T201",   # print statements are not allowed
+    "N",      # pep8-naming
+    "SIM",    # flake8-simplify
+    "RET",    # flake8-return
 ]
 ignore = [
     "E501",  # line too long, handled by black

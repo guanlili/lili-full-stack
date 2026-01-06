@@ -18,7 +18,7 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "noArrayIndexKey": "off"
       },
       "style": {
