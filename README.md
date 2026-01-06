@@ -43,10 +43,11 @@ git checkout -b project/your-project-name
    - **生产环境**: 请修改 `SECRET_KEY`, `POSTGRES_PASSWORD`, `FIRST_SUPERUSER_PASSWORD`。
    
 2. **启动服务**:
+   
    ```bash
    docker compose up -d --build
    ```
-
+   
 3. **访问应用**:
    - **前端首页**: http://localhost
    - **后台登录**: http://localhost/login
@@ -56,6 +57,7 @@ git checkout -b project/your-project-name
    - **Traefik 面板**: http://localhost:8080
 
 4. **停止服务**:
+   
    ```bash
    docker compose down
    ```
@@ -127,6 +129,31 @@ uv run alembic upgrade head
 4. **SDK**: 运行 `./scripts/generate-client.sh` 更新前端 SDK。
 5. **UI**: 在 `frontend/src/routes/` 中创建新路由，并使用生成的 SDK 开发界面。
 
+## 🌐 关于 Traefik (网关/反向代理)
+
+本项目内置了 **Traefik** 作为反向代理和负载均衡器（"网关"）。它负责将流量根据规则转发给前端或后端容器。
+
+### 1. 管理面板 (Dashboard)
+在本地开发模式下，我们开启了非安全模式的面板，你可以直接访问：
+👉 **http://localhost:8080/dashboard/**
+
+在这里你可以：
+- 查看 **Routers**: 当前定义的路由规则（例如 `/api` 转发给 Backend）。
+- 查看 **Services**: 后端服务的健康状态。
+- 调试 404/502 错误：如果请求不通，首先看这里路由是否变绿。
+
+### 2. 多项目部署建议 (进阶)
+默认情况下，本模板每个项目自带一个 Traefik（占用 80/443 端口）。这意味着你无法在同一台服务器上同时运行两个基于此模板的项目。
+
+**生产环境推荐架构**：
+如果你有一台服务器需要部署多个项目，建议采用 **全局 Traefik** 模式：
+1. 在服务器上单独启动一个 Traefik 容器，占用 80/443 端口，作为唯一的流量入口。
+2. 创建一个共享 Docker 网络（如 `web-gateway`）。
+3. 修改本项目的 `docker-compose.yml`：
+   - **移除**本项目自带的 `traefik` 服务。
+   - 将 `frontend` 和 `backend` 服务加入 `web-gateway` 网络。
+   - 修改 `labels`，使用 `Host()` 规则（如 `Host('myapp.example.com')`）来区分不同项目。
+
 ## 🚢 部署与运维
 
 本模板采用 "Docker 优先" 的设计理念。
@@ -135,6 +162,7 @@ uv run alembic upgrade head
 1. **服务器准备**: 准备一台安装了 Docker & Docker Compose 的服务器 (推荐 Ubuntu/Debian)。
 2. **克隆代码**: 将本项目 (`lightweight` 分支) 克隆到服务器。
 3. **环境配置**:
+   
    - 创建或更新 `.env` 文件。
    - **严重警告**: 必须修改 `POSTGRES_PASSWORD`, `FIRST_SUPERUSER_PASSWORD` 和 `SECRET_KEY` 为强密码。
    - 将 `DOMAIN` 设置为你的实际域名。
