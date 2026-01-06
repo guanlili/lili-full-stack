@@ -111,3 +111,35 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# Scholar Models
+class ScholarAuthor(SQLModel):
+    name: str
+    affiliation: str | None = None
+    interests: list[str] | None = None
+    citedby: int | None = None
+    scholar_id: str
+    url_picture: str | None = None
+
+
+class ScholarPublication(SQLModel):
+    title: str
+    link: str | None = None
+    snippet: str | None = None
+    authors: str | None = None
+    venue: str | None = None
+    year: str | None = None
+    cited_by: int | None = None
+    versions: int | None = None
+
+
+class ScholarSearchResults(SQLModel):
+    authors: list[ScholarAuthor]
+    publications: list[ScholarPublication]
+    count: int
+
+
+class ScholarExportData(SQLModel):
+    publications: list[ScholarPublication]
+    filename: str | None = "scholar_results.xlsx"

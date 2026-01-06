@@ -237,6 +237,211 @@ export const PrivateUserCreateSchema = {
     title: 'PrivateUserCreate'
 } as const;
 
+export const ScholarAuthorSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        affiliation: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Affiliation'
+        },
+        interests: {
+            anyOf: [
+                {
+                    items: {
+                        type: 'string'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Interests'
+        },
+        citedby: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Citedby'
+        },
+        scholar_id: {
+            type: 'string',
+            title: 'Scholar Id'
+        },
+        url_picture: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Url Picture'
+        }
+    },
+    type: 'object',
+    required: ['name', 'scholar_id'],
+    title: 'ScholarAuthor'
+} as const;
+
+export const ScholarExportDataSchema = {
+    properties: {
+        publications: {
+            items: {
+                '$ref': '#/components/schemas/ScholarPublication'
+            },
+            type: 'array',
+            title: 'Publications'
+        },
+        filename: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Filename',
+            default: 'scholar_results.xlsx'
+        }
+    },
+    type: 'object',
+    required: ['publications'],
+    title: 'ScholarExportData'
+} as const;
+
+export const ScholarPublicationSchema = {
+    properties: {
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        link: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Link'
+        },
+        snippet: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Snippet'
+        },
+        authors: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Authors'
+        },
+        venue: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Venue'
+        },
+        year: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Year'
+        },
+        cited_by: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cited By'
+        },
+        versions: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Versions'
+        }
+    },
+    type: 'object',
+    required: ['title'],
+    title: 'ScholarPublication'
+} as const;
+
+export const ScholarSearchResultsSchema = {
+    properties: {
+        authors: {
+            items: {
+                '$ref': '#/components/schemas/ScholarAuthor'
+            },
+            type: 'array',
+            title: 'Authors'
+        },
+        publications: {
+            items: {
+                '$ref': '#/components/schemas/ScholarPublication'
+            },
+            type: 'array',
+            title: 'Publications'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['authors', 'publications', 'count'],
+    title: 'ScholarSearchResults'
+} as const;
+
 export const TokenSchema = {
     properties: {
         access_token: {

@@ -51,6 +51,37 @@ export type PrivateUserCreate = {
     is_verified?: boolean;
 };
 
+export type ScholarAuthor = {
+    name: string;
+    affiliation?: (string | null);
+    interests?: (Array<(string)> | null);
+    citedby?: (number | null);
+    scholar_id: string;
+    url_picture?: (string | null);
+};
+
+export type ScholarExportData = {
+    publications: Array<ScholarPublication>;
+    filename?: (string | null);
+};
+
+export type ScholarPublication = {
+    title: string;
+    link?: (string | null);
+    snippet?: (string | null);
+    authors?: (string | null);
+    venue?: (string | null);
+    year?: (string | null);
+    cited_by?: (number | null);
+    versions?: (number | null);
+};
+
+export type ScholarSearchResults = {
+    authors: Array<ScholarAuthor>;
+    publications: Array<ScholarPublication>;
+    count: number;
+};
+
 export type Token = {
     access_token: string;
     token_type?: string;
@@ -170,6 +201,24 @@ export type PrivateCreateUserData = {
 };
 
 export type PrivateCreateUserResponse = (UserPublic);
+
+export type ScholarSearchScholarData = {
+    asSdt?: (string | null);
+    asVis?: (number | null);
+    asYhi?: (number | null);
+    asYlo?: (number | null);
+    hl?: (string | null);
+    q: string;
+    start?: (number | null);
+};
+
+export type ScholarSearchScholarResponse = (ScholarSearchResults);
+
+export type ScholarExportScholarData = {
+    requestBody: ScholarExportData;
+};
+
+export type ScholarExportScholarResponse = (unknown);
 
 export type UsersReadUsersData = {
     limit?: number;
