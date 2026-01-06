@@ -177,6 +177,7 @@ uv run alembic upgrade head
 # 查看所有日志
 docker compose logs -f
 
+
 # 查看特定服务日志
 docker compose logs -f backend
 docker compose logs -f frontend
