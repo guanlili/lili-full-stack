@@ -129,17 +129,28 @@ def parse_scholar_html(html: str) -> ScholarSearchResults:
 
 async def fetch_scholar_html(params: dict) -> str:
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
         "Referer": "https://scholar.google.com/",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
     }
     url = "https://scholar.google.com/scholar"
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(url, params=params, headers=headers, follow_redirects=True)
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        response = await client.get(url, params=params, headers=headers)
+        if "sorry/index" in str(response.url) or response.status_code == 429:
+            raise HTTPException(
+                status_code=429, 
+                detail="Blocked by Google Scholar (Captcha required). Please try again later or solve Captcha in browser."
+            )
         if response.status_code != 200:
-            if response.status_code in [302, 301]:
-                raise HTTPException(status_code=429, detail="Blocked by Google Scholar (Captcha).")
             raise HTTPException(status_code=response.status_code, detail=f"Google Error: {response.status_code}")
         return response.text
 
@@ -148,21 +159,59 @@ async def fetch_scholar_html(params: dict) -> str:
 async def search_scholar(
     current_user: CurrentUser,
     q: str,
+    year: int,  # 年份为必选项
     hl: str | None = "en",
-    as_ylo: int | None = None,
-    as_yhi: int | None = None,
-    as_vis: int | None = None,
-    as_sdt: str | None = None,
-    start: int | None = 0,
+    as_vis: int | None = 1,
+    as_sdt: str | None = "2007",
 ) -> Any:
-    params = {"q": q, "hl": hl, "start": start}
-    if as_ylo: params["as_ylo"] = as_ylo
-    if as_yhi: params["as_yhi"] = as_yhi
-    if as_vis is not None: params["as_vis"] = as_vis
-    if as_sdt: params["as_sdt"] = as_sdt
+    """
+    搜索指定年份的所有文献。
+    年份为必选参数，会自动循环获取该年份所有分页的结果。
+    """
+    all_authors = []
+    all_publications = []
+    start = 0
+    max_pages = 100  # 安全限制，防止无限循环
+    
+    for page in range(max_pages):
+        params = {
+            "q": q,
+            "hl": hl,
+            "start": start,
+            "as_ylo": year,  # 起始年份
+            "as_yhi": year,  # 结束年份（与起始年份相同，精确查询该年份）
+            "scisbd": 1,     # 按日期排序
+        }
+        if as_vis is not None:
+            params["as_vis"] = as_vis
+        if as_sdt:
+            params["as_sdt"] = as_sdt
 
-    html = await fetch_scholar_html(params)
-    return parse_scholar_html(html)
+        html = await fetch_scholar_html(params)
+        page_results = parse_scholar_html(html)
+        
+        # 合并作者（仅首页有作者信息）
+        if page == 0:
+            all_authors.extend(page_results.authors)
+        
+        # 合并文献
+        all_publications.extend(page_results.publications)
+        
+        # 如果本页返回的文献少于10条，说明已经是最后一页
+        if len(page_results.publications) < 10:
+            break
+        
+        start += 10
+        # 增加随机延迟，降低被 Google 拦截的频率
+        import asyncio
+        import random
+        await asyncio.sleep(random.uniform(1.0, 3.0))
+    
+    return ScholarSearchResults(
+        authors=all_authors,
+        publications=all_publications,
+        count=len(all_authors) + len(all_publications),
+    )
 
 
 @router.post("/export")

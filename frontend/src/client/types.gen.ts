@@ -205,11 +205,9 @@ export type PrivateCreateUserResponse = (UserPublic);
 export type ScholarSearchScholarData = {
     asSdt?: (string | null);
     asVis?: (number | null);
-    asYhi?: (number | null);
-    asYlo?: (number | null);
     hl?: (string | null);
     q: string;
-    start?: (number | null);
+    year: number;
 };
 
 export type ScholarSearchScholarResponse = (ScholarSearchResults);

@@ -4,20 +4,18 @@ import type { ColumnDef } from "@tanstack/react-table"
 import axios from "axios"
 import {
     BookOpen,
+    Calendar,
     ChevronDown,
-    ChevronLeft,
-    ChevronRight,
     ChevronUp,
     Download,
     ExternalLink,
-    Filter,
     Layers,
     Quote,
     Search,
     Table as TableIcon,
     User,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 import { ScholarService, OpenAPI, type ScholarPublication } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
@@ -144,12 +142,11 @@ const publicationColumns: ColumnDef<ScholarPublication>[] = [
 function ScholarSearch() {
     const [searchTerm, setSearchTerm] = useState("")
     const [query, setQuery] = useState("")
-    const [start, setStart] = useState(0)
+    const [year, setYear] = useState<string>(new Date().getFullYear().toString())
+    const [searchYear, setSearchYear] = useState<number | null>(null)
 
     // Advanced filters
     const [hl, setHl] = useState("en")
-    const [asYlo, setAsYlo] = useState<string>("")
-    const [showFilters, setShowFilters] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
 
     const {
@@ -159,26 +156,22 @@ function ScholarSearch() {
         error,
         isFetching,
     } = useQuery({
-        queryKey: ["scholarSearch", query, hl, asYlo, start],
+        queryKey: ["scholarSearch", query, hl, searchYear],
         queryFn: () =>
             ScholarService.searchScholar({
                 q: query,
+                year: searchYear!,
                 hl: hl,
-                asYlo: asYlo ? parseInt(asYlo) : undefined,
-                start: start,
             }),
-        enabled: !!query,
+        enabled: !!query && searchYear !== null,
     })
-
-    // Reset page when search term or filters change
-    useEffect(() => {
-        setStart(0)
-    }, [query, hl, asYlo])
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
-        if (searchTerm.trim()) {
+        const yearNum = parseInt(year)
+        if (searchTerm.trim() && yearNum && yearNum >= 1900 && yearNum <= 2100) {
             setQuery(searchTerm)
+            setSearchYear(yearNum)
         }
     }
 
@@ -189,7 +182,7 @@ function ScholarSearch() {
             const token = localStorage.getItem("access_token")
             const response = await axios.post(`${OpenAPI.BASE}/api/v1/scholar/export`, {
                 publications: results.publications,
-                filename: `scholar_results_${query}_p${start / 10 + 1}.xlsx`
+                filename: `scholar_results_${query}_${searchYear}.xlsx`
             }, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -201,7 +194,7 @@ function ScholarSearch() {
             const url = window.URL.createObjectURL(new Blob([response.data]))
             const link = document.createElement("a")
             link.href = url
-            link.setAttribute("download", `scholar_results_${query}_p${start / 10 + 1}.xlsx`)
+            link.setAttribute("download", `scholar_results_${query}_${searchYear}.xlsx`)
             document.body.appendChild(link)
             link.click()
             link.remove()
@@ -230,7 +223,7 @@ function ScholarSearch() {
                             <Button
                                 variant="default"
                                 onClick={handleExport}
-                                className="rounded-xl font-bold gap-2 shadow-lg shadow-primary/20 h-12"
+                                className="rounded-xl font-semibold gap-2 shadow-md hover:shadow-lg transition-all"
                                 disabled={isExporting}
                             >
                                 {isExporting ? (
@@ -238,7 +231,7 @@ function ScholarSearch() {
                                 ) : (
                                     <Download className="h-4 w-4" />
                                 )}
-                                Export Current Page
+                                Export All Results
                             </Button>
                         )}
                     </div>
@@ -247,71 +240,64 @@ function ScholarSearch() {
                 <div className="flex flex-col gap-4">
                     <form
                         onSubmit={handleSearch}
-                        className="flex flex-col sm:flex-row gap-3 p-2 rounded-2xl bg-muted/30 border border-border focus-within:border-primary/50 transition-colors shadow-sm"
+                        className="flex flex-col gap-3 p-3 rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 border border-border/50 focus-within:border-primary/50 transition-all shadow-sm hover:shadow-md"
                     >
-                        <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by name or topic (e.g., Junping Du, Deep Learning)..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-12 h-14 text-lg border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className={`h-14 w-14 rounded-xl ${showFilters ? "bg-primary/10 border-primary text-primary" : ""}`}
-                                onClick={() => setShowFilters(!showFilters)}
-                            >
-                                <Filter className="h-5 w-5" />
-                            </Button>
-                            <Button
-                                type="submit"
-                                size="lg"
-                                className="h-14 px-8 text-lg font-semibold rounded-xl"
-                            >
-                                Consult Agent
-                            </Button>
-                        </div>
-                    </form>
+                        {/* Main search row */}
+                        <div className="flex flex-col lg:flex-row gap-3">
+                            {/* Search input */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                <Input
+                                    placeholder="Author name or research topic..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-12 h-12 border-none bg-background/80 backdrop-blur-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm"
+                                    required
+                                />
+                            </div>
 
-                    {showFilters && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-6 rounded-2xl bg-muted/20 border border-border animate-in fade-in slide-in-from-top-4 duration-300">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold px-1 text-muted-foreground uppercase tracking-wider">Language (hl)</label>
+                            {/* Year input */}
+                            <div className="relative w-full lg:w-36">
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="number"
+                                    placeholder="Year"
+                                    value={year}
+                                    onChange={(e) => setYear(e.target.value)}
+                                    min="1900"
+                                    max="2100"
+                                    className="pl-10 h-12 border-none bg-background/80 backdrop-blur-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm text-center font-medium"
+                                    required
+                                />
+                            </div>
+
+                            {/* Language selector */}
+                            <div className="w-full lg:w-48">
                                 <Select value={hl} onValueChange={setHl}>
-                                    <SelectTrigger className="bg-background rounded-xl h-11">
-                                        <SelectValue placeholder="Select Language" />
+                                    <SelectTrigger className="h-12 bg-background/80 backdrop-blur-sm border-none rounded-xl shadow-sm">
+                                        <SelectValue placeholder="Language" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="en">English (default)</SelectItem>
-                                        <SelectItem value="zh-CN">Chinese (Simplified)</SelectItem>
-                                        <SelectItem value="zh-TW">Chinese (Traditional)</SelectItem>
-                                        <SelectItem value="ja">Japanese</SelectItem>
-                                        <SelectItem value="ko">Korean</SelectItem>
+                                        <SelectItem value="en">🇬🇧 English</SelectItem>
+                                        <SelectItem value="zh-CN">🇨🇳 简体中文</SelectItem>
+                                        <SelectItem value="zh-TW">🇹🇼 繁體中文</SelectItem>
+                                        <SelectItem value="ja">🇯🇵 日本語</SelectItem>
+                                        <SelectItem value="ko">🇰🇷 한국어</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold px-1 text-muted-foreground uppercase tracking-wider">Since Year (as_ylo)</label>
-                                <Input
-                                    type="number"
-                                    placeholder="e.g. 2025"
-                                    value={asYlo}
-                                    onChange={(e) => setAsYlo(e.target.value)}
-                                    className="bg-background rounded-xl h-11"
-                                />
-                            </div>
-                            <div className="flex items-end pb-1">
-                                <p className="text-xs text-muted-foreground">
-                                    Standardized extraction for authors and publications.
-                                </p>
-                            </div>
+
+                            {/* Search button */}
+                            <Button
+                                type="submit"
+                                size="lg"
+                                className="h-12 px-8 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
+                            >
+                                <Search className="h-4 w-4 mr-2" />
+                                Search
+                            </Button>
                         </div>
-                    )}
+                    </form>
                 </div>
 
                 {(isLoading || (isFetching && query)) && (
@@ -321,7 +307,10 @@ function ScholarSearch() {
                             <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
                         </div>
                         <p className="text-muted-foreground font-medium animate-pulse">
-                            Fetching page {start / 10 + 1}...
+                            Fetching all publications from year {searchYear}...
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            This may take a moment for years with many publications
                         </p>
                     </div>
                 )}
@@ -350,28 +339,8 @@ function ScholarSearch() {
                                 </TabsTrigger>
                             </TabsList>
 
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={start === 0 || isFetching}
-                                    onClick={() => setStart(Math.max(0, start - 10))}
-                                    className="rounded-lg h-9 px-3"
-                                >
-                                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                                </Button>
-                                <div className="px-3 py-1 bg-muted rounded-lg text-xs font-bold">
-                                    Page {start / 10 + 1}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={results.publications.length < 10 || isFetching}
-                                    onClick={() => setStart(start + 10)}
-                                    className="rounded-lg h-9 px-3"
-                                >
-                                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                                </Button>
+                            <div className="px-4 py-2 bg-muted rounded-lg text-sm font-semibold">
+                                {results.publications.length} publications found in {searchYear}
                             </div>
                         </div>
 
@@ -411,7 +380,7 @@ function ScholarSearch() {
                                     <div className="bg-muted/30 p-4 border-b flex items-center justify-between">
                                         <h3 className="font-bold flex items-center gap-2">
                                             <TableIcon className="h-4 w-4 text-primary" />
-                                            Academic Statistics Report (Page {start / 10 + 1})
+                                            Academic Statistics Report ({searchYear})
                                         </h3>
                                     </div>
                                     <DataTable
@@ -437,11 +406,11 @@ function ScholarSearch() {
                         <div className="space-y-2">
                             <h3 className="text-xl font-bold">No results found</h3>
                             <p className="text-muted-foreground max-w-sm">
-                                We couldn't find any records matching "{query}" on page {start / 10 + 1}.
+                                We couldn't find any publications matching "{query}" in year {searchYear}.
                             </p>
-                            {start > 0 && (
-                                <Button variant="link" onClick={() => setStart(0)}>Return to page 1</Button>
-                            )}
+                            <p className="text-xs text-muted-foreground">
+                                Try a different search term or year.
+                            </p>
                         </div>
                     </div>
                 )}

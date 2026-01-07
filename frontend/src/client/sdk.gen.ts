@@ -238,14 +238,14 @@ export class PrivateService {
 export class ScholarService {
     /**
      * Search Scholar
+     * 搜索指定年份的所有文献。
+     * 年份为必选参数，会自动循环获取该年份所有分页的结果。
      * @param data The data for the request.
      * @param data.q
+     * @param data.year
      * @param data.hl
-     * @param data.asYlo
-     * @param data.asYhi
      * @param data.asVis
      * @param data.asSdt
-     * @param data.start
      * @returns ScholarSearchResults Successful Response
      * @throws ApiError
      */
@@ -255,12 +255,10 @@ export class ScholarService {
             url: '/api/v1/scholar/search',
             query: {
                 q: data.q,
+                year: data.year,
                 hl: data.hl,
-                as_ylo: data.asYlo,
-                as_yhi: data.asYhi,
                 as_vis: data.asVis,
-                as_sdt: data.asSdt,
-                start: data.start
+                as_sdt: data.asSdt
             },
             errors: {
                 422: 'Validation Error'
