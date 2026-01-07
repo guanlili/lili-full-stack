@@ -82,6 +82,15 @@ export type ScholarSearchResults = {
     count: number;
 };
 
+export type SearchHistory = {
+    id?: string;
+    key: string;
+    url?: (string | null);
+    result_summary?: (string | null);
+    source?: string;
+    created_at?: string;
+};
+
 export type Token = {
     access_token: string;
     token_type?: string;
@@ -206,11 +215,35 @@ export type ScholarSearchScholarData = {
     asSdt?: (string | null);
     asVis?: (number | null);
     hl?: (string | null);
+    maxPages?: number;
     q: string;
+    sort?: string;
     year: number;
 };
 
 export type ScholarSearchScholarResponse = (ScholarSearchResults);
+
+export type ScholarListSearchHistoryData = {
+    endDate?: (string | null);
+    keyword?: (string | null);
+    startDate?: (string | null);
+};
+
+export type ScholarListSearchHistoryResponse = (Array<SearchHistory>);
+
+export type ScholarClearSearchHistoryResponse = (unknown);
+
+export type ScholarDeleteHistoryEntryData = {
+    historyId: string;
+};
+
+export type ScholarDeleteHistoryEntryResponse = (unknown);
+
+export type ScholarExportHistoryData = {
+    format?: string;
+};
+
+export type ScholarExportHistoryResponse = (unknown);
 
 export type ScholarExportScholarData = {
     requestBody: ScholarExportData;

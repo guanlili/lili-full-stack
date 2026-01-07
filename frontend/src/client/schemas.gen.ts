@@ -442,6 +442,59 @@ export const ScholarSearchResultsSchema = {
     title: 'ScholarSearchResults'
 } as const;
 
+export const SearchHistorySchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        key: {
+            type: 'string',
+            maxLength: 512,
+            title: 'Key'
+        },
+        url: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 1024
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Url'
+        },
+        result_summary: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 1024
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Result Summary'
+        },
+        source: {
+            type: 'string',
+            maxLength: 16,
+            title: 'Source',
+            default: 'remote'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['key'],
+    title: 'SearchHistory'
+} as const;
+
 export const TokenSchema = {
     properties: {
         access_token: {

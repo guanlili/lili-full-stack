@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ScholarSearchScholarData, ScholarSearchScholarResponse, ScholarExportScholarData, ScholarExportScholarResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ScholarSearchScholarData, ScholarSearchScholarResponse, ScholarListSearchHistoryData, ScholarListSearchHistoryResponse, ScholarClearSearchHistoryResponse, ScholarDeleteHistoryEntryData, ScholarDeleteHistoryEntryResponse, ScholarExportHistoryData, ScholarExportHistoryResponse, ScholarExportScholarData, ScholarExportScholarResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class ItemsService {
     /**
@@ -238,12 +238,13 @@ export class PrivateService {
 export class ScholarService {
     /**
      * Search Scholar
-     * 搜索指定年份的所有文献。
-     * 年份为必选参数，会自动循环获取该年份所有分页的结果。
+     * 搜索指定年份的所有文献。年份为必选参数，会自动循环获取该年份所有分页的结果。
      * @param data The data for the request.
      * @param data.q
      * @param data.year
      * @param data.hl
+     * @param data.sort
+     * @param data.maxPages
      * @param data.asVis
      * @param data.asSdt
      * @returns ScholarSearchResults Successful Response
@@ -257,8 +258,86 @@ export class ScholarService {
                 q: data.q,
                 year: data.year,
                 hl: data.hl,
+                sort: data.sort,
+                max_pages: data.maxPages,
                 as_vis: data.asVis,
                 as_sdt: data.asSdt
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * List Search History
+     * @param data The data for the request.
+     * @param data.keyword
+     * @param data.startDate
+     * @param data.endDate
+     * @returns SearchHistory Successful Response
+     * @throws ApiError
+     */
+    public static listSearchHistory(data: ScholarListSearchHistoryData = {}): CancelablePromise<ScholarListSearchHistoryResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/scholar/history',
+            query: {
+                keyword: data.keyword,
+                start_date: data.startDate,
+                end_date: data.endDate
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Clear Search History
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static clearSearchHistory(): CancelablePromise<ScholarClearSearchHistoryResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/scholar/history'
+        });
+    }
+    
+    /**
+     * Delete History Entry
+     * @param data The data for the request.
+     * @param data.historyId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static deleteHistoryEntry(data: ScholarDeleteHistoryEntryData): CancelablePromise<ScholarDeleteHistoryEntryResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/scholar/history/{history_id}',
+            path: {
+                history_id: data.historyId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Export History
+     * @param data The data for the request.
+     * @param data.format
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static exportHistory(data: ScholarExportHistoryData = {}): CancelablePromise<ScholarExportHistoryResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/scholar/history/export',
+            query: {
+                format: data.format
             },
             errors: {
                 422: 'Validation Error'

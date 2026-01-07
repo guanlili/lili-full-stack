@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 from pydantic import EmailStr
@@ -140,6 +141,21 @@ class ScholarSearchResults(SQLModel):
     count: int
 
 
+class CacheEntry(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    key: str = Field(index=True, unique=True, max_length=512)
+    result_json: str = Field(nullable=False)  # JSON serialized ScholarSearchResults
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+
+class SearchHistory(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    key: str = Field(index=True, max_length=512)
+    url: str | None = Field(default=None, max_length=1024)
+    result_summary: str | None = Field(default=None, max_length=1024)
+    source: str = Field(default="remote", max_length=16)  # "remote" or "cache"
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+
 class ScholarExportData(SQLModel):
     publications: list[ScholarPublication]
     filename: str | None = "scholar_results.xlsx"
+
