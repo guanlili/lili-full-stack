@@ -20,7 +20,9 @@ from app.models import (
     ScholarExportData,
     SearchHistory,
     CacheEntry,
+    PaperDetail,
 )
+from app.core.paper_parser import PaperParser
 
 router = APIRouter(prefix="/scholar", tags=["scholar"])
 
@@ -330,6 +332,34 @@ async def search_scholar(
         source="remote",
     )
     return result
+
+    return result
+
+
+@router.get("/paper/detail", response_model=PaperDetail)
+async def get_paper_detail(
+    current_user: CurrentUser,
+    url: str,
+) -> Any:
+    """
+    获取论文的真实来源详情。
+    """
+    try:
+        return await PaperParser.parse_paper(url)
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        if status_code in [403, 503]:
+             raise HTTPException(status_code=424, detail=f"Target site blocked access (Cloudflare/Bot protection): {status_code}")
+        elif status_code == 404:
+             raise HTTPException(status_code=404, detail="Paper not found on target site")
+        else:
+             raise HTTPException(status_code=502, detail=f"Upstream error from target site: {status_code}")
+    except ValueError as e:
+        # Created by our parser for non-HTML content
+        raise HTTPException(status_code=415, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse paper detail: {str(e)}")
+
 
 # History endpoints
 @router.get("/history", response_model=list[SearchHistory])

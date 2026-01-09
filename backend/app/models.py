@@ -133,6 +133,18 @@ class ScholarPublication(SQLModel):
     year: str | None = None
     cited_by: int | None = None
     versions: int | None = None
+    detail: "PaperDetail | None" = None
+
+
+class PaperDetail(SQLModel):
+    title: str
+    authors: list[str]
+    publication_date: str | None = None
+    venue: str | None = None
+    doi: str | None = None
+    source_site: str | None = None
+    url: str
+    abstract: str | None = None
 
 
 class ScholarSearchResults(SQLModel):

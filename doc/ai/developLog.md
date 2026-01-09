@@ -104,3 +104,20 @@
     - **新增功能**：前端新增 **"Pages" (页数)** 选择器，支持用户自定义抓取 `1` 到 `100` 页。
     - **默认策略**：默认抓取 `1` 页，便于快速预览；用户可手动调至最大 `100` 页以获取全量数据。
     - **参数透权**：后端接口同步新增 `max_pages` 参数，并将此 parameter 加入缓存 Key，确保不同深度的搜索互不干扰。
+
+---
+
+### 9. 论文详情解析与权威验证 (Paper Detail Parsing & Authority Verification)
+- **权威数据源体系**：
+    - **核心痛点**：Google Scholar 索引信息（如年份、作者列表）常有缺失或不准确。
+    - **解决方案**：新增 `PaperParser` 模块，直接访问论文原始来源（Publishers）抓取权威元数据。
+    - **多源适配**：
+        - **标准协议支持**：内置 Dublin Core, Highwire Press, JSON-LD 解析器，覆盖 Springer, arXiv, Nature 等 80% 主流站点。
+        - **IEEE Xplore 专配**：针对 IEEE 动态渲染页面，实现了基于 Regex 的 `xplGlobal` JS 对象解析策略。
+        - **IJCAI 深度适配**：智能识别并重写 IJCAI PDF 链接（如 `.../0585.pdf` -> `.../0585`），从摘要页精准提取元数据，解决了 "Unknown Title" 问题。
+- **全链路鲁棒性设计**：
+    - **Bot Protection 防御**：针对 Wiley, ACM 等强反爬站点（Cloudflare），后端通过 424 状态码优雅降级，前端 UI 明确展示 "Target site blocked access" 而非崩溃。
+    - **非 HTML 内容识别**：自动检测 PDF/Binary 链接，返回 415 (Unsupported Media Type)，杜绝了乱码或空信息的展示。
+- **UI 交互升级**：
+    - **Verified Paper Details 表格**：在 Visual Flow 与 Statistics Table 旁新增验证详情表。
+    - **实时状态反馈**：每行论文独立异步验证，支持 "Pending" -> "Verified" (绿色) / "Failed" (红色) 的动态状态流转。

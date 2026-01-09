@@ -19,6 +19,7 @@ import { useState } from "react"
 
 import { OpenAPI, type ScholarPublication, ScholarService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
+import { VerifiedPapersTable } from "@/components/Common/VerifiedPapersTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -450,6 +451,9 @@ function ScholarSearch() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Verified Papers Table */}
+              <VerifiedPapersTable publications={results.publications} />
             </TabsContent>
           </Tabs>
         )}
