@@ -56,6 +56,8 @@ jobs:
             docker compose -f compose.yml up -d --build --remove-orphans || {
               echo "--- prestart logs ---"
               docker compose -f compose.yml logs prestart --tail 50
+              echo "--- backend logs ---"
+              docker compose -f compose.yml logs backend --tail 50
               exit 1
             }
 
