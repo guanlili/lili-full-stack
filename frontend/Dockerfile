@@ -9,7 +9,7 @@ COPY frontend/package.json frontend/bunfig.toml /app/frontend/
 
 WORKDIR /app/frontend
 
-RUN --mount=type=cache,target=/root/.bun/install/cache bun install
+RUN bun install
 
 COPY ./frontend /app/frontend
 ARG VITE_API_URL
