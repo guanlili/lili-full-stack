@@ -27,6 +27,34 @@ jobs:
             echo "=== 1/3 拉最新代码 ==="
             git pull --ff-only
 
+            echo "=== 1.5/3 确保 .env 存在 ==="
+            if [ ! -f .env ]; then
+              echo ".env 不存在，创建默认生产配置..."
+              cat > .env << 'ENVEOF'
+FRONTEND_HOST=http://42.193.108.162:8082
+ENVIRONMENT=production
+PROJECT_NAME="My Project"
+BACKEND_CORS_ORIGINS="http://42.193.108.162:8082"
+SECRET_KEY=changethis
+FIRST_SUPERUSER=admin@example.com
+FIRST_SUPERUSER_PASSWORD=Lili2026!
+SMTP_HOST=
+SMTP_USER=
+SMTP_PASSWORD=
+EMAILS_FROM_EMAIL=info@example.com
+SMTP_TLS=True
+SMTP_SSL=False
+SMTP_PORT=587
+POSTGRES_SERVER=db
+POSTGRES_PORT=5432
+POSTGRES_DB=app
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=LiliDB2026!
+SENTRY_DSN=
+APP_PORT=8082
+ENVEOF
+            fi
+
             echo "=== 2/3 构建并重启容器 ==="
             docker compose -f compose.yml up -d --build || {
               echo "--- prestart logs ---"
