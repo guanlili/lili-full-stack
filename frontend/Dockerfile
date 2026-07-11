@@ -3,13 +3,13 @@ FROM oven/bun:1.3 AS build-stage
 
 WORKDIR /app
 
-COPY package.json bun.lock /app/
+COPY package.json /app/
 
 COPY frontend/package.json frontend/bunfig.toml /app/frontend/
 
 WORKDIR /app/frontend
 
-RUN bun install
+RUN --mount=type=cache,target=/root/.bun/install/cache bun install
 
 COPY ./frontend /app/frontend
 ARG VITE_API_URL
