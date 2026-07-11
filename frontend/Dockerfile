@@ -1,18 +1,16 @@
 # Stage 0: build static assets with Node.js (compatible with kernel 3.10+)
 FROM node:20-slim AS build-stage
 
-WORKDIR /app
+WORKDIR /app/frontend
 
-# Copy workspace manifest + lock file for deterministic install
-COPY package.json package-lock.json ./
-COPY frontend/package.json ./frontend/
+COPY frontend/package.json ./
 
-RUN npm ci --workspace=frontend
+# 不使用 package-lock.json：lock 文件在 macOS 生成，缺少 Linux x64 原生绑定
+RUN npm install --no-package-lock
 
-COPY ./frontend ./frontend/
+COPY ./frontend ./
 
 ARG VITE_API_URL
-WORKDIR /app/frontend
 RUN npm run build
 
 
