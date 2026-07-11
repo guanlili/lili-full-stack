@@ -1,5 +1,10 @@
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
 node_modules/
 .DS_Store
 .env.local
+
+# Claude Code 运行时自动生成，不需要提交
+.agents/
+.claude/skills/
