@@ -157,30 +157,33 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 **1. 配置 GitHub Secrets**
 
-在新仓库 **Settings → Secrets → Actions** 添加：
+在新仓库 **Settings → Secrets → Actions** 添加以下 11 个 Secret：
 
-| Secret | 说明 |
-|--------|------|
-| `SERVER_HOST` | 服务器 IP |
-| `SERVER_USER` | SSH 用户名（通常 `root`）|
-| `SERVER_SSH_KEY` | SSH 私钥 |
-| `DEPLOY_PATH` | 服务器上的项目路径，如 `/mnt/datadisk0/项目名` |
+| Secret | 说明 | 示例 |
+|--------|------|------|
+| `SERVER_HOST` | 服务器 IP | `42.193.108.162` |
+| `SERVER_USER` | SSH 用户名 | `root` |
+| `SERVER_SSH_KEY` | SSH 私钥（完整内容）| `-----BEGIN...` |
+| `DEPLOY_PATH` | 服务器部署路径 | `/mnt/datadisk0/项目名` |
+| `APP_PORT` | 前端暴露端口（同服务器上不同项目不能冲突）| `8083` |
+| `FRONTEND_HOST` | 前端完整地址 | `http://42.193.108.162:8083` |
+| `SECRET_KEY` | JWT 签名密钥，生产必须随机 | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `POSTGRES_PASSWORD` | 数据库密码 | 自定义强密码 |
+| `FIRST_SUPERUSER` | 初始管理员邮箱 | `admin@example.com` |
+| `FIRST_SUPERUSER_PASSWORD` | 初始管理员密码 | 自定义 |
+| `PROJECT_NAME` | 项目名称（显示在邮件等处）| `我的项目` |
 
-**2. 更新 workflow 里的端口和地址**
+> `BACKEND_CORS_ORIGINS` 自动与 `FRONTEND_HOST` 保持一致，无需单独配置。
 
-`.github/workflows/deploy.yml` 中的 `.env` 创建步骤，修改：
-- `APP_PORT` — 该项目占用的端口（避免与其他项目冲突）
-- `FRONTEND_HOST` / `BACKEND_CORS_ORIGINS` — 换成对应的 IP:PORT 或域名
-
-**3. 服务器上 clone 一次**
+**2. 服务器上 clone 一次**
 
 ```bash
-git clone git@github.com:guanlili/<项目名>.git /mnt/datadisk0/项目名
+git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 ```
 
-只需做一次。之后 push 到 `master` 即自动触发部署：拉代码 → 自动创建/更新 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器。
+只需做一次。之后 push 到 `master` 即自动触发部署：拉代码 → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器。
 
-> `.env` 由 workflow 自动生成，无需手动 SSH 创建。如需覆盖某个值，直接 SSH 编辑服务器上的 `.env` 即可（workflow 不会覆盖已存在的文件，只修补 `SECRET_KEY` 等默认占位值）。
+> `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。
 
 ---
 

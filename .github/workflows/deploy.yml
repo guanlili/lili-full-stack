@@ -27,35 +27,30 @@ jobs:
             echo "=== 1/3 拉最新代码 ==="
             git pull --ff-only
 
-            echo "=== 1.5/3 确保 .env 存在 ==="
-            if [ ! -f .env ]; then
-              echo ".env 不存在，创建默认生产配置..."
-              {
-                echo 'FRONTEND_HOST=http://42.193.108.162:8082'
-                echo 'ENVIRONMENT=production'
-                echo 'PROJECT_NAME=My Project'
-                echo 'BACKEND_CORS_ORIGINS=http://42.193.108.162:8082'
-                echo 'SECRET_KEY=1scv326Xk_1mSsd9FSoNQXwrHsPpbfLCYHkCjw-4VKc'
-                echo 'FIRST_SUPERUSER=admin@example.com'
-                echo 'FIRST_SUPERUSER_PASSWORD=Lili2026!'
-                echo 'SMTP_HOST='
-                echo 'SMTP_USER='
-                echo 'SMTP_PASSWORD='
-                echo 'EMAILS_FROM_EMAIL=info@example.com'
-                echo 'SMTP_TLS=True'
-                echo 'SMTP_SSL=False'
-                echo 'SMTP_PORT=587'
-                echo 'POSTGRES_SERVER=db'
-                echo 'POSTGRES_PORT=5432'
-                echo 'POSTGRES_DB=app'
-                echo 'POSTGRES_USER=postgres'
-                echo 'POSTGRES_PASSWORD=LiliDB2026!'
-                echo 'SENTRY_DSN='
-                echo 'APP_PORT=8082'
-              } > .env
-            fi
-            # 强制修正默认占位值（无论 .env 是新建还是已存在）
-            sed -i 's|^SECRET_KEY=changethis$|SECRET_KEY=1scv326Xk_1mSsd9FSoNQXwrHsPpbfLCYHkCjw-4VKc|' .env
+            echo "=== 1.5/3 写入 .env（以 Secrets 为准）==="
+            {
+              echo "FRONTEND_HOST=${{ secrets.FRONTEND_HOST }}"
+              echo "ENVIRONMENT=production"
+              echo "PROJECT_NAME=${{ secrets.PROJECT_NAME }}"
+              echo "BACKEND_CORS_ORIGINS=${{ secrets.FRONTEND_HOST }}"
+              echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+              echo "FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}"
+              echo "FIRST_SUPERUSER_PASSWORD=${{ secrets.FIRST_SUPERUSER_PASSWORD }}"
+              echo "SMTP_HOST="
+              echo "SMTP_USER="
+              echo "SMTP_PASSWORD="
+              echo "EMAILS_FROM_EMAIL=info@example.com"
+              echo "SMTP_TLS=True"
+              echo "SMTP_SSL=False"
+              echo "SMTP_PORT=587"
+              echo "POSTGRES_SERVER=db"
+              echo "POSTGRES_PORT=5432"
+              echo "POSTGRES_DB=app"
+              echo "POSTGRES_USER=postgres"
+              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+              echo "SENTRY_DSN="
+              echo "APP_PORT=${{ secrets.APP_PORT }}"
+            } > .env
 
             echo "=== 2/3 构建并重启容器 ==="
             docker compose -f compose.yml up -d --build --remove-orphans || {
