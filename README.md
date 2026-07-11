@@ -11,7 +11,7 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 | 层级 | 技术 |
 |------|------|
 | 后端框架 | FastAPI + SQLModel + PostgreSQL |
-| 包管理 | uv（后端）/ bun（前端）|
+| 包管理 | uv（后端）/ npm（前端）|
 | 认证 | JWT + 邮件找回密码 |
 | 数据库迁移 | Alembic |
 | 前端框架 | React 19 + TypeScript + Vite |
@@ -69,7 +69,6 @@ docker compose up --build
 |------|----------|
 | 前端 | http://localhost:5173 |
 | 后端 API 文档 | http://localhost:8000/docs |
-| 数据库管理（Adminer） | http://localhost:8081 |
 | 邮件测试（Mailcatcher） | http://localhost:1080 |
 
 默认管理员账号见 `.env` 中的 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`。
@@ -116,7 +115,7 @@ docker compose exec backend alembic upgrade head
 后端接口有任何变动后必须执行：
 
 ```bash
-cd frontend && bun run generate-client
+cd frontend && npm run generate-client
 ```
 
 `frontend/src/client/` 是自动生成的，**不要手动修改**。
@@ -154,27 +153,34 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 ## 生产部署
 
-### 手动首次部署
+### 首次部署
 
-```bash
-# 在服务器上
-git clone git@github.com:guanlili/<项目名>.git /path/to/app
-cd /path/to/app
-cp .env.example .env
-vim .env   # 填写生产配置
-docker compose up -d --build
-```
+**1. 配置 GitHub Secrets**
 
-### 自动部署（GitHub Actions）
-
-push 到 `master` 自动触发。需要在 GitHub repo **Settings → Secrets → Actions** 配置：
+在新仓库 **Settings → Secrets → Actions** 添加：
 
 | Secret | 说明 |
 |--------|------|
 | `SERVER_HOST` | 服务器 IP |
-| `SERVER_USER` | SSH 用户名 |
+| `SERVER_USER` | SSH 用户名（通常 `root`）|
 | `SERVER_SSH_KEY` | SSH 私钥 |
-| `DEPLOY_PATH` | 服务器上的项目路径 |
+| `DEPLOY_PATH` | 服务器上的项目路径，如 `/mnt/datadisk0/项目名` |
+
+**2. 更新 workflow 里的端口和地址**
+
+`.github/workflows/deploy.yml` 中的 `.env` 创建步骤，修改：
+- `APP_PORT` — 该项目占用的端口（避免与其他项目冲突）
+- `FRONTEND_HOST` / `BACKEND_CORS_ORIGINS` — 换成对应的 IP:PORT 或域名
+
+**3. 服务器上 clone 一次**
+
+```bash
+git clone git@github.com:guanlili/<项目名>.git /mnt/datadisk0/项目名
+```
+
+只需做一次。之后 push 到 `master` 即自动触发部署：拉代码 → 自动创建/更新 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器。
+
+> `.env` 由 workflow 自动生成，无需手动 SSH 创建。如需覆盖某个值，直接 SSH 编辑服务器上的 `.env` 即可（workflow 不会覆盖已存在的文件，只修补 `SECRET_KEY` 等默认占位值）。
 
 ---
 
