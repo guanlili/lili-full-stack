@@ -62,7 +62,13 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Validation**: Validate all inputs at the API boundary (Pydantic).
 - **Testing**: Write unit tests for critical utility functions in `backend/app/tests/`.
 
-## 5. Forbidden Patterns
+## 5. 前后端联动规范
+
+- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && bun run generate-client`
+- 前端不允许手写 API 请求 URL 字符串，统一用 `client/` 目录下的生成代码
+- 数据库模型变更后必须生成 Alembic 迁移文件，不允许直接改数据库
+
+## 6. Forbidden Patterns
 
 - No `print()` in production code — use `logging`.
 - No circular imports — structure modules to avoid dependency cycles.
