@@ -35,7 +35,7 @@ jobs:
                 echo 'ENVIRONMENT=production'
                 echo 'PROJECT_NAME=My Project'
                 echo 'BACKEND_CORS_ORIGINS=http://42.193.108.162:8082'
-                echo 'SECRET_KEY=changethis'
+                echo 'SECRET_KEY=1scv326Xk_1mSsd9FSoNQXwrHsPpbfLCYHkCjw-4VKc'
                 echo 'FIRST_SUPERUSER=admin@example.com'
                 echo 'FIRST_SUPERUSER_PASSWORD=Lili2026!'
                 echo 'SMTP_HOST='
