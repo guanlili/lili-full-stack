@@ -1,23 +1,19 @@
-# Stage 0, "build-stage", based on Bun, to build and compile the frontend
-FROM oven/bun:1.1 AS build-stage
-
-WORKDIR /app
-
-COPY package.json bun.lock /app/
-
-COPY frontend/package.json frontend/bunfig.toml /app/frontend/
+# Stage 0: build static assets with Node.js (compatible with kernel 3.10+)
+FROM node:20-slim AS build-stage
 
 WORKDIR /app/frontend
 
-RUN bun install
+COPY frontend/package.json ./
 
-COPY ./frontend /app/frontend
+RUN npm install
+
+COPY ./frontend ./
 ARG VITE_API_URL
 
-RUN bun run build
+RUN npm run build
 
 
-# Stage 1, based on Nginx, to have only the compiled app, ready for production with Nginx
+# Stage 1: serve with nginx
 FROM nginx:1
 
 COPY --from=build-stage /app/frontend/dist/ /usr/share/nginx/html
