@@ -34,14 +34,12 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 ```bash
 git clone git@github.com:guanlili/<新项目名>.git
 cd <新项目名>
-cp .env.example .env
+bash scripts/init-project.sh "项目显示名"
 ```
 
-编辑 `.env`，至少修改：
-- `PROJECT_NAME` — 项目名
-- `SECRET_KEY` — 随机字符串（生产必改）
-- `POSTGRES_PASSWORD` — 数据库密码
-- `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD` — 管理员账号
+脚本一次性完成：生成 `.env`（`SECRET_KEY`、数据库密码、管理员密码全部随机化）、
+统一改名（`PROJECT_NAME`、前端 `APP_NAME`、页面标题），并输出剩余待办清单。
+本地管理员账号会打印在结果里（也记录在 `.env`）。
 
 ### 第三步：更新项目文档
 
@@ -218,6 +216,8 @@ HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安
 lili-full-stack/
 ├── .claude/
 │   └── commands/          # Claude Code 自定义斜杠命令
+├── scripts/
+│   └── init-project.sh    # 新项目一键初始化（改名 + 密钥随机化）
 ├── .env.example           # 环境变量模板（复制为 .env 使用）
 ├── .env                   # 实际配置（gitignore 忽略，永不提交；生产由 Secrets 生成）
 ├── AI_RULES.md            # AI 开发规范（技术约定）
