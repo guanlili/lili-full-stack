@@ -50,6 +50,7 @@ jobs:
               echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
               echo "SENTRY_DSN="
               echo "APP_PORT=${{ secrets.APP_PORT }}"
+              echo "WORKERS=${{ secrets.WORKERS || '1' }}"
             } > .env
 
             echo "=== 2/3 构建并重启容器 ==="
