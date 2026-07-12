@@ -17,7 +17,6 @@
     "rules": {
       "preset": "recommended",
       "suspicious": {
-        "noExplicitAny": "off",
         "noArrayIndexKey": "off"
       },
       "style": {
