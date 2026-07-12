@@ -206,7 +206,7 @@ HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安
 | 时机 | 操作 |
 |------|------|
 | 做项目时踩了坑 | 回来更新 `AI_RULES.md` 或 `CLAUDE.md` |
-| 每季度 | 运行 `/project:upgrade-deps` 升级依赖 |
+| 每季度 | 运行 `/upgrade-deps` 升级依赖 |
 | 发现更好的开发模式 | 更新 `.claude/commands/` 中的指令 |
 
 ### 从模板同步改进到现有项目
@@ -256,3 +256,19 @@ lili-full-stack/
 | Playwright e2e 测试 | 包含 | 已移除 |
 | Copier 模板系统 | 包含 | 已移除 |
 | AI 开发规范 | 无 | AI_RULES.md + CLAUDE.md + .claude/commands/ |
+
+---
+
+## 设计取舍（有意不做的东西）
+
+> 本节记录模板**刻意省略**的实践及原因。补齐它们之前请先读这里——多数"缺失"是权衡后的决定，不是疏漏。
+
+| 不做什么 | 为什么 |
+|---------|--------|
+| 前端单元测试（vitest） | 模板阶段收益低。前端质量门槛 = tsc 类型检查 + biome + 后端 API 测试兜底；具体项目有复杂前端逻辑时再按需引入 |
+| dependabot / renovate | 小团队没精力处理持续的升级 PR 噪音。用季度 `/upgrade-deps` 集中升级 + 验证代替 |
+| pre-commit 钩子 | CI 是唯一质量门槛。本地钩子对 AI 驱动的开发是摩擦（AI 每次提交都会被格式化钩子打断），且和 CI 重复 |
+| staging 环境 | 单服务器多项目、快速交付定位。staging 的维护成本大于收益；重要变更靠 CI 门槛 + 部署后健康检查兜底 |
+| JWT refresh token | 8 天 access token + localStorage 是简单性取舍，适合工具型产品。对安全有更高要求的项目再升级会话机制 |
+| 登录接口限流 | 不在代码层加依赖。正式上线的项目在 Caddy 层做 `rate_limit`（见 HTTPS 章节），内网/演示项目不需要 |
+| Kubernetes / 多机编排 | 单服务器 docker compose 覆盖当前所有项目规模。规模到了再迁移，不预支复杂度 |
