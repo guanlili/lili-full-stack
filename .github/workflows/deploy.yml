@@ -66,7 +66,7 @@ jobs:
         run: uv run bash scripts/tests-start.sh
 
   frontend:
-    name: 前端 Lint + 构建
+    name: 前端 Lint + 构建 + 客户端一致性
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -84,6 +84,24 @@ jobs:
       - name: 类型检查 + 构建
         working-directory: frontend
         run: npm run build
+      # 校验 src/client/ 与后端 OpenAPI 一致：后端接口改了但忘记 generate-client 时在这里拦下
+      - uses: astral-sh/setup-uv@v5
+      - name: 准备环境变量（导入 app 需要）
+        run: cp .env.example .env
+      - name: 导出后端 OpenAPI 规范
+        working-directory: backend
+        run: uv run python -c "import json, app.main; print(json.dumps(app.main.app.openapi()))" > ../frontend/openapi.json
+      - name: 校验前端客户端无漂移
+        working-directory: frontend
+        run: |
+          npx openapi-ts
+          if [ -n "$(git status --porcelain src/client/)" ]; then
+            git status --porcelain src/client/
+            git --no-pager diff src/client/ | head -100
+            echo "❌ 前端 src/client/ 与后端 OpenAPI 不一致（后端接口改动后未重新生成客户端）。"
+            echo "   修复：docker compose up -d 后执行 cd frontend && npm run generate-client，提交 src/client/ 的变更。"
+            exit 1
+          fi
 
   deploy:
     name: 部署到服务器
@@ -102,8 +120,11 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "=== 1/4 拉最新代码 ==="
-            git pull --ff-only
+            echo "=== 1/4 checkout 到本次 CI 验证过的提交 ==="
+            # 不用 git pull：pull 拿到的是"部署时刻的最新 master"，连续 push 时可能部署到还没过 CI 的提交。
+            # reset --hard 到 github.sha 保证部署的永远是这个 run 测过的代码，也兼容紧急回滚后的服务器状态。
+            git fetch origin
+            git reset --hard ${{ github.sha }}
 
             # 注意：下方键列表必须与 .env.example 保持一致（CI 的键校验步骤会拦截不一致）
             echo "=== 2/4 写入 .env（以 Secrets 为准）==="

@@ -54,7 +54,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **API Routing**: nginx proxies `/api`, `/docs`, `/redoc` to the `backend` container. `VITE_API_URL` is empty in production (relative URLs).
 - **Local Dev**: `VITE_API_URL=http://localhost:8000` in override so frontend calls backend directly.
 - **Credentials**: NEVER commit `.env` or any secret to git（`.gitignore` 已忽略）. Production `.env` is regenerated from GitHub Secrets on every deploy — GitHub Secrets is the single source of truth.
-- **Deploy**: Push to `master` → CI (lint + tests) → server-side git pull + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
+- **Deploy**: Push to `master` → CI (lint + tests + 前端客户端一致性) → server-side checkout 到该次 CI 验证过的 commit + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
 - **HTTP vs HTTPS**: Internal tools and demos run on plain `http://IP:port` (the template default) — do NOT add TLS/reverse-proxy machinery to individual projects. Projects going live for real users MUST use HTTPS via the server-level Caddy path documented in README（域名 + ICP 备案，备案需提前 1~3 周启动）. If a project is about to go live and still runs on HTTP, remind the user.
 
 ## 4. Workflow & Best Practices
@@ -65,7 +65,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 
 ## 5. 前后端联动规范
 
-- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && npm run generate-client`（需要 backend 容器在运行，脚本会自动导出最新 OpenAPI 规范）
+- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && npm run generate-client`（需要 backend 容器在运行，脚本会自动导出最新 OpenAPI 规范）。CI 会重新生成并 diff `src/client/`，忘记生成会在部署前被拦下
 - 前端不允许手写 API 请求 URL 字符串，统一用 `client/` 目录下的生成代码
 - 数据库模型变更后必须生成 Alembic 迁移文件，不允许直接改数据库
 

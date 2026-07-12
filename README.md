@@ -156,7 +156,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 ```
 
-只需做一次。之后 push 到 `master` 即自动触发：**CI（后端 lint + 测试、前端 lint + 构建）→ 全部通过才部署** → 拉代码 → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器 → 健康检查验证 → 清理旧镜像。
+只需做一次。之后 push 到 `master` 即自动触发：**CI（后端 lint + 测试、前端 lint + 构建、前后端客户端一致性）→ 全部通过才部署** → checkout 到该次 CI 验证过的 commit → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器 → 健康检查验证 → 清理旧镜像。
 
 > `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。**`.env` 永远不要提交到 git**（已被 `.gitignore` 忽略）。
 
