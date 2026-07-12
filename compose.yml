@@ -1,3 +1,21 @@
+# prestart 与 backend 共享的配置。
+# 所有环境变量由 env_file (.env) 提供，environment 里只保留：
+#   1. 容器内必须覆盖的值（POSTGRES_SERVER 指向 db 服务）
+#   2. 必填变量的 fail-fast 校验（缺失时 compose 直接报错，不带病启动）
+x-backend-common: &backend-common
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  env_file:
+    - .env
+  environment:
+    POSTGRES_SERVER: db
+    FRONTEND_HOST: ${FRONTEND_HOST?Variable not set}
+    SECRET_KEY: ${SECRET_KEY?Variable not set}
+    FIRST_SUPERUSER: ${FIRST_SUPERUSER?Variable not set}
+    FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD?Variable not set}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Variable not set}
+
 services:
 
   db:
@@ -14,45 +32,22 @@ services:
     env_file:
       - .env
     environment:
-      - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Variable not set}
+      POSTGRES_USER: ${POSTGRES_USER?Variable not set}
+      POSTGRES_DB: ${POSTGRES_DB?Variable not set}
 
+  # 一次性任务：等待 DB → 跑 Alembic 迁移 → 写入初始数据
   prestart:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    <<: *backend-common
     depends_on:
       db:
         condition: service_healthy
         restart: true
     command: bash scripts/prestart.sh
-    env_file:
-      - .env
-    environment:
-      - DOMAIN=${DOMAIN}
-      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
-      - SECRET_KEY=${SECRET_KEY?Variable not set}
-      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
-      - POSTGRES_SERVER=db
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - SENTRY_DSN=${SENTRY_DSN}
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    <<: *backend-common
     restart: always
     depends_on:
       db:
@@ -60,26 +55,6 @@ services:
         restart: true
       prestart:
         condition: service_completed_successfully
-    env_file:
-      - .env
-    environment:
-      - DOMAIN=${DOMAIN}
-      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
-      - SECRET_KEY=${SECRET_KEY?Variable not set}
-      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
-      - POSTGRES_SERVER=db
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - SENTRY_DSN=${SENTRY_DSN}
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/')\""]
       interval: 10s
@@ -92,8 +67,8 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        # 生产走 nginx 反代，前端用相对路径请求 /api
         - VITE_API_URL=
-        - NODE_ENV=production
     restart: always
     ports:
       - "${APP_PORT:-80}:80"
