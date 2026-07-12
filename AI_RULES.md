@@ -6,7 +6,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 ## 1. Technology Stack
 
 ### Backend (`/backend`)
-- **Framework**: FastAPI (Python 3.10+)
+- **Framework**: FastAPI (Python 3.14，见 `pyproject.toml` 的 `requires-python`；代码可使用 3.14 语法特性，如不带括号的多异常 `except A, B:`)
 - **ORM**: SQLModel (SQLAlchemy + Pydantic)
 - **Database**: PostgreSQL (via Docker)
 - **Package Manager**: uv
@@ -40,6 +40,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Pydantic**: Use Pydantic models for all API Request/Response schemas.
 - **Sync by default**: Route handlers and database operations use plain `def` with the sync SQLModel `Session` (see `items.py`). FastAPI runs them in a threadpool. Do NOT mix in async DB sessions — stay consistent with the existing code.
 - **Error Handling**: Use `HTTPException` for API errors. Do not return raw dictionaries for errors.
+- **401 vs 403**: 401 仅用于 token 无效/过期（前端收到 401 会自动登出）；403 用于"已登录但权限不足"。不要混用——权限不足返回 401 会把正常用户踢下线。
 
 ### Frontend (TypeScript/React)
 - **Components**: Use Functional Components with Hooks.

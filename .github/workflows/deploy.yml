@@ -139,6 +139,7 @@ jobs:
               echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
               echo "FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}"
               echo "FIRST_SUPERUSER_PASSWORD=${{ secrets.FIRST_SUPERUSER_PASSWORD }}"
+              echo "USERS_OPEN_REGISTRATION=${{ secrets.USERS_OPEN_REGISTRATION || 'false' }}"
               echo "SMTP_HOST="
               echo "SMTP_USER="
               echo "SMTP_PASSWORD="

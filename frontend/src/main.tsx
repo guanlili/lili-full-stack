@@ -19,7 +19,9 @@ OpenAPI.TOKEN = async () => {
 }
 
 const handleApiError = (error: Error) => {
-  if (error instanceof ApiError && [401, 403].includes(error.status)) {
+  // 只在 401（token 无效/过期）时登出；403 是"已登录但权限不足"，
+  // 一并登出会把正常用户误踢下线（例如访问一个无权限的资源）
+  if (error instanceof ApiError && error.status === 401) {
     localStorage.removeItem("access_token")
     window.location.href = "/login"
   }

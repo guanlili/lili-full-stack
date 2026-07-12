@@ -189,3 +189,13 @@ def test_login_with_argon2_password_keeps_hash(client: TestClient, db: Session) 
 
     assert user.hashed_password == original_hash
     assert user.hashed_password.startswith("$argon2")
+
+
+def test_use_invalid_token_returns_401(client: TestClient) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/login/test-token",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    assert r.status_code == 401
+    # 401 必须带 WWW-Authenticate；403 留给"已登录但权限不足"（不触发前端登出）
+    assert r.headers["WWW-Authenticate"] == "Bearer"

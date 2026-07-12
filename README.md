@@ -57,6 +57,9 @@ bash scripts/init-project.sh "项目显示名"
 - `frontend/src/routes/_layout/items.tsx`
 - 导航组件中 Items 的链接
 
+同时**决定注册方式**：自助注册默认只在本地开启（生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关）。
+如果项目是"管理员建账号"模式，交付前把注册入口一并删掉：`frontend/src/routes/signup.tsx` 和登录页上的注册链接。
+
 ### 第五步：首次启动
 
 ```bash
@@ -119,9 +122,11 @@ docker compose down
 
 Claude Code 会按标准流程自动创建订单模块的全部后端和前端代码。
 
-仓库还内置了团队共享的权限白名单（`.claude/settings.json`）：日常开发的高频安全命令
+仓库还内置了团队共享的权限白名单（`.claude/settings.json`）：日常开发的高频命令
 （docker compose、npm run、uv run、git 只读、gh 查看 CI 等）已预授权，克隆即用，
 少弹大部分权限框；破坏性操作（`down -v`、push、commit 等）仍会请求确认。
+注意边界：`uv run *` 和 `docker compose exec backend *` 实质上允许 AI 免确认执行任意代码——
+这是"减少弹框"的有意取舍，团队成员应知情；要求更严格的项目可自行收窄白名单。
 个人偏好写在 `.claude/settings.local.json`（已被 gitignore，不入库）。
 
 ---
@@ -132,7 +137,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 **1. 配置 GitHub Secrets**
 
-在新仓库 **Settings → Secrets → Actions** 添加以下 11 个 Secret：
+在新仓库 **Settings → Secrets → Actions** 添加以下 11 个必填 Secret：
 
 | Secret | 必改 | 说明 | 示例 |
 |--------|:----:|------|------|
@@ -149,6 +154,13 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 | `FIRST_SUPERUSER_PASSWORD` | | 初始管理员密码 | 自定义 |
 
 > `BACKEND_CORS_ORIGINS` 自动与 `FRONTEND_HOST` 保持一致，无需单独配置。
+
+另有 2 个**可选** Secret（不设置则用默认值）：
+
+| Secret | 默认 | 说明 |
+|--------|------|------|
+| `USERS_OPEN_REGISTRATION` | `false` | 是否开放自助注册。生产默认关闭（管理员在后台建账号）；产品需要用户自行注册时设为 `true` |
+| `WORKERS` | `1` | 后端 worker 进程数，大流量项目可调至 CPU 核数×2+1 |
 
 **2. 服务器上 clone 一次**
 
@@ -293,4 +305,6 @@ lili-full-stack/
 | staging 环境 | 单服务器多项目、快速交付定位。staging 的维护成本大于收益；重要变更靠 CI 门槛 + 部署后健康检查兜底 |
 | JWT refresh token | 8 天 access token + localStorage 是简单性取舍，适合工具型产品。对安全有更高要求的项目再升级会话机制 |
 | 登录接口限流 | 不在代码层加依赖。正式上线的项目在 Caddy 层做 `rate_limit`（见 HTTPS 章节），内网/演示项目不需要 |
+| 重置密码 token 一次性失效 | token 48 小时内可重复使用（改完密码不作废）。工具型项目风险低；高安全要求的项目可把 token 绑定当前密码 hash（密码一改即失效） |
+| 生产环境隐藏 `/docs`、`/redoc` | API 文档公开对内网工具是便利。正式上线面向公网的项目建议关闭（`ENVIRONMENT=production` 时设 `docs_url=None`）或在 Caddy 层加 basic auth |
 | Kubernetes / 多机编排 | 单服务器 docker compose 覆盖当前所有项目规模。规模到了再迁移，不预支复杂度 |
