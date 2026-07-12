@@ -22,13 +22,18 @@ $ARGUMENTS — 功能名称，例如 `order`（订单）、`product`（产品）
    docker compose exec backend alembic upgrade head
    ```
 
-6. **重新生成前端客户端**（需要 backend 容器在运行）：
+6. **后端测试**：新建 `backend/tests/api/routes/test_$ARGUMENTS.py`，参考 `test_items.py` 的结构，覆盖增删改查和权限（普通用户不能操作他人数据）。本地运行验证（backend 镜像不含 pytest，测试在宿主机跑，连 compose 暴露的 5432 数据库）：
+   ```bash
+   cd backend && POSTGRES_SERVER=localhost uv run pytest tests/api/routes/test_$ARGUMENTS.py -v
+   ```
+
+7. **重新生成前端客户端**（需要 backend 容器在运行）：
    ```bash
    cd frontend && npm run generate-client
    ```
 
-7. **前端页面**：新建 `frontend/src/routes/_layout/$ARGUMENTS.tsx`，参考 `items.tsx` 的结构，实现列表页 + 新增/编辑弹窗
+8. **前端页面**：新建 `frontend/src/routes/_layout/$ARGUMENTS.tsx`，参考 `items.tsx` 的结构，实现列表页 + 新增/编辑弹窗
 
-8. **导航链接**：在 `frontend/src/components/Sidebar/Main.tsx` 的导航项中添加新页面的入口
+9. **导航链接**：在 `frontend/src/components/Sidebar/Main.tsx` 的导航项中添加新页面的入口
 
-完成后告知用户，并列出所有新建/修改的文件。
+完成后告知用户，并列出所有新建/修改的文件，确认测试全部通过。
