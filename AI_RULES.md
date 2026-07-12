@@ -11,7 +11,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Database**: PostgreSQL (via Docker)
 - **Package Manager**: uv
 - **Linting**: Ruff (strict adherence required)
-- **Type Checking**: MyPy (strict mode)
+- **Type Checking**: ty (Astral, error-on-warning)
 
 ### Frontend (`/frontend`)
 - **Framework**: React 19
@@ -38,7 +38,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Type Hints**: Always use Python type hints.
   - `def get_user(id: uuid.UUID) -> User:`
 - **Pydantic**: Use Pydantic models for all API Request/Response schemas.
-- **Async**: Use `async def` for all route handlers and database operations.
+- **Sync by default**: Route handlers and database operations use plain `def` with the sync SQLModel `Session` (see `items.py`). FastAPI runs them in a threadpool. Do NOT mix in async DB sessions — stay consistent with the existing code.
 - **Error Handling**: Use `HTTPException` for API errors. Do not return raw dictionaries for errors.
 
 ### Frontend (TypeScript/React)
@@ -53,18 +53,19 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Compose**: `compose.yml` is production. `compose.override.yml` is local dev (auto-applied).
 - **API Routing**: nginx proxies `/api`, `/docs`, `/redoc` to the `backend` container. `VITE_API_URL` is empty in production (relative URLs).
 - **Local Dev**: `VITE_API_URL=http://localhost:8000` in override so frontend calls backend directly.
-- **Credentials**: This is a private repository. Database passwords and secret keys can be hardcoded in `.env` for convenience.
-- **Deploy**: Server-side git pull + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
+- **Credentials**: NEVER commit `.env` or any secret to git（`.gitignore` 已忽略）. Production `.env` is regenerated from GitHub Secrets on every deploy — GitHub Secrets is the single source of truth.
+- **Deploy**: Push to `master` → CI (lint + tests) → server-side git pull + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
+- **HTTP vs HTTPS**: Internal tools and demos run on plain `http://IP:port` (the template default) — do NOT add TLS/reverse-proxy machinery to individual projects. Projects going live for real users MUST use HTTPS via the server-level Caddy path documented in README（域名 + ICP 备案，备案需提前 1~3 周启动）. If a project is about to go live and still runs on HTTP, remind the user.
 
 ## 4. Workflow & Best Practices
 
 - **Modularity**: Keep components small and focused. One component per file is preferred.
 - **Validation**: Validate all inputs at the API boundary (Pydantic).
-- **Testing**: Write unit tests for critical utility functions in `backend/app/tests/`.
+- **Testing**: Write unit tests for critical utility functions in `backend/tests/`.
 
 ## 5. 前后端联动规范
 
-- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && bun run generate-client`
+- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && npm run generate-client`（需要 backend 容器在运行，脚本会自动导出最新 OpenAPI 规范）
 - 前端不允许手写 API 请求 URL 字符串，统一用 `client/` 目录下的生成代码
 - 数据库模型变更后必须生成 Alembic 迁移文件，不允许直接改数据库
 

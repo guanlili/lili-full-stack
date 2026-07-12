@@ -23,22 +23,25 @@ frontend/src/
 
 ```bash
 docker compose up --build   # 首次启动
-docker compose watch        # 启用热更新
+docker compose watch        # 启用热更新（后端 --reload，前端 vite HMR）
 docker compose down         # 停止
 ```
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | http://localhost:5173 |
+| 前端（vite dev server） | http://localhost:5173 |
 | API 文档 | http://localhost:8000/docs |
-| 数据库管理 | http://localhost:8081 |
 | 邮件测试 | http://localhost:1080 |
+
+查看数据库：`docker compose exec db psql -U postgres -d app`
 
 ## 开发新功能的标准流程
 
+> 本节是流程的唯一权威版本（README 只留概览指向这里）。
+
 1. **后端**：在 `models.py` 加数据模型 → 在 `crud.py` 加增删改查 → 在 `api/routes/` 加新路由文件 → 在 `api/main.py` 注册路由
 2. **数据库迁移**：`docker compose exec backend alembic revision --autogenerate -m "add xxx"` → `alembic upgrade head`
-3. **前端 API 客户端**：后端改完后重新生成 → `cd frontend && bun run generate-client`
+3. **前端 API 客户端**：后端改完后重新生成 → `cd frontend && npm run generate-client`（脚本会从运行中的 backend 容器导出最新 OpenAPI 规范再生成）
 4. **前端页面**：在 `routes/_layout/` 加新页面，在 `_layout.tsx` 加导航链接
 
 ## 示例代码说明

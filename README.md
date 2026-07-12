@@ -17,9 +17,9 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 | 前端框架 | React 19 + TypeScript + Vite |
 | 样式 | TailwindCSS v4 + Radix UI + Lucide React |
 | 数据请求 | TanStack Query + TanStack Router |
-| 代码规范 | Ruff + MyPy（后端）/ Biome（前端）|
+| 代码规范 | Ruff + ty（后端）/ Biome（前端）|
 | 容器 | Docker Compose（nginx 内置 /api 代理，无 Traefik）|
-| CI/CD | GitHub Actions → server-side git pull + docker compose up |
+| CI/CD | GitHub Actions：lint + 测试通过后 → server-side git pull + docker compose up |
 
 ---
 
@@ -81,52 +81,24 @@ docker compose up --build
 # 启动所有服务（自动加载 compose.override.yml）
 docker compose up --build
 
-# 启用热更新（后端代码改动自动生效）
+# 启用热更新（后端 --reload + 前端 vite HMR，推荐日常开发用这个）
 docker compose watch
 
 # 停止
 docker compose down
 ```
 
+本地开发时前端跑的是 vite dev server（5173 端口，支持热更新），生产镜像才是 nginx 静态托管。
+
 ---
 
 ## 新功能开发流程
 
-每个新功能模块（如订单、产品、报告）都遵循以下标准流程：
+**权威版本在 [CLAUDE.md](CLAUDE.md)**（Claude Code 每次会话自动加载，人和 AI 都照它执行），此处只留概览，避免两份文档漂移：
 
-### 1. 后端
+> 后端加模型/CRUD/路由 → Alembic 迁移 → `cd frontend && npm run generate-client` 同步客户端 → 前端加页面。
 
-```
-backend/app/models.py     ← 加数据模型（SQLModel 类）
-backend/app/crud.py       ← 加增删改查函数
-backend/app/api/routes/   ← 新建路由文件（参考 items.py）
-backend/app/api/main.py   ← 注册新路由
-```
-
-### 2. 数据库迁移
-
-```bash
-docker compose exec backend alembic revision --autogenerate -m "add xxx table"
-docker compose exec backend alembic upgrade head
-```
-
-### 3. 同步前端 API 客户端
-
-后端接口有任何变动后必须执行：
-
-```bash
-cd frontend && npm run generate-client
-```
-
-`frontend/src/client/` 是自动生成的，**不要手动修改**。
-
-### 4. 前端
-
-```
-frontend/src/routes/_layout/   ← 新建页面（参考 items.tsx）
-frontend/src/hooks/            ← 封装 useQuery / useMutation
-frontend/src/components/       ← 可复用组件
-```
+编码规范（命名、类型、禁止模式）见 [AI_RULES.md](AI_RULES.md)。
 
 ---
 
@@ -136,15 +108,15 @@ frontend/src/components/       ← 可复用组件
 
 | 指令 | 用途 |
 |------|------|
-| `/project:new-feature <名称>` | 自动创建完整功能模块（后端 model + crud + route + 前端页面） |
-| `/project:migration <描述>` | 生成并应用 Alembic 数据库迁移 |
-| `/project:generate-client` | 重新生成前端 API 客户端 |
-| `/project:upgrade-deps` | 升级所有依赖包（uv + bun）|
+| `/new-feature <名称>` | 自动创建完整功能模块（后端 model + crud + route + 前端页面） |
+| `/migration <描述>` | 生成并应用 Alembic 数据库迁移 |
+| `/generate-client` | 重新生成前端 API 客户端 |
+| `/upgrade-deps` | 升级所有依赖包（uv + npm）|
 
 示例：
 
 ```
-/project:new-feature order
+/new-feature order
 ```
 
 Claude Code 会按标准流程自动创建订单模块的全部后端和前端代码。
@@ -181,9 +153,44 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 ```
 
-只需做一次。之后 push 到 `master` 即自动触发部署：拉代码 → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器。
+只需做一次。之后 push 到 `master` 即自动触发：**CI（后端 lint + 测试、前端 lint + 构建）→ 全部通过才部署** → 拉代码 → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器 → 健康检查验证 → 清理旧镜像。
 
-> `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。
+> `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。**`.env` 永远不要提交到 git**（已被 `.gitignore` 忽略）。
+
+### HTTP / HTTPS 策略
+
+按项目性质二选一，**立项时就确定**：
+
+| 项目性质 | 方案 |
+|---------|------|
+| 内网工具、临时演示 | `http://IP:端口`（模板默认），够用，不折腾 |
+| 正式上线、面向真实用户 | **必须 HTTPS**，按下面三步走 |
+
+HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安全"、剪贴板/摄像头等 API 不可用——演示可以接受，正式上线不行。
+
+**正式上线三步（前置条件：已备案域名）：**
+
+1. **域名解析**：加一条 A 记录 `项目名.你的域名.com → 服务器 IP`。国内服务器要求域名已 ICP 备案——**备案需 1~3 周，立项时就启动**；子域名跟随主域名备案，不用重复办。优先用客户自己已备案的域名（备案主体在客户侧，域名归属也更合理）。
+2. **服务器级 Caddy**（整台服务器装一次，所有项目共享；TLS 必须在服务器层做，因为 443 端口只有一个）：
+   ```
+   # apt install caddy 后编辑 /etc/caddy/Caddyfile，每个项目加 3 行：
+   项目名.你的域名.com {
+       reverse_proxy localhost:8083   # 对应该项目的 APP_PORT
+   }
+   ```
+   `systemctl reload caddy` 生效，证书自动申请续期。安全组需放行 80/443。
+3. **改 Secret**：`FRONTEND_HOST` 改为 `https://项目名.你的域名.com`，push 触发重新部署即可（CORS 自动跟随，代码零改动）。
+
+### 数据库备份
+
+生产数据只存在 Docker volume 里，服务器磁盘损坏即全部丢失。上线后在服务器配置定时备份：
+
+```bash
+# crontab -e，每天凌晨 3 点备份，保留最近 7 天
+0 3 * * * docker compose -f 部署路径/compose.yml exec -T db pg_dump -U postgres app | gzip > /备份目录/db-$(date +\%w).sql.gz
+```
+
+恢复：`gunzip -c 备份文件.sql.gz | docker compose exec -T db psql -U postgres app`
 
 ---
 
@@ -212,7 +219,7 @@ lili-full-stack/
 ├── .claude/
 │   └── commands/          # Claude Code 自定义斜杠命令
 ├── .env.example           # 环境变量模板（复制为 .env 使用）
-├── .env                   # 实际配置（私有仓库，可直接提交）
+├── .env                   # 实际配置（gitignore 忽略，永不提交；生产由 Secrets 生成）
 ├── AI_RULES.md            # AI 开发规范（技术约定）
 ├── CLAUDE.md              # 项目上下文（Claude Code 启动时自动读取）
 ├── compose.yml            # 生产 Docker Compose
@@ -225,6 +232,7 @@ lili-full-stack/
 │       ├── models.py      # SQLModel 数据模型
 │       └── crud.py        # 数据库操作
 └── frontend/
+    ├── scripts/           # generate-client.sh / regen-lockfile.sh
     └── src/
         ├── routes/        # 页面（_layout/ 下需要登录）
         ├── components/    # 组件
@@ -239,7 +247,7 @@ lili-full-stack/
 | 项目 | 上游 fastapi/full-stack-fastapi-template | 本模板 |
 |------|------------------------------------------|--------|
 | 反向代理 | Traefik（复杂 label 配置） | nginx proxy_pass（内置前端镜像） |
-| CI/CD | staging + production 双套 | 单一 deploy.yml |
+| CI/CD | staging + production 双套 | 单一 workflow：CI（lint+测试）通过后部署 |
 | Playwright e2e 测试 | 包含 | 已移除 |
 | Copier 模板系统 | 包含 | 已移除 |
 | AI 开发规范 | 无 | AI_RULES.md + CLAUDE.md + .claude/commands/ |

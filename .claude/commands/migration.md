@@ -22,4 +22,7 @@ $ARGUMENTS — 迁移描述，例如 `add user avatar field`
    docker compose exec backend alembic upgrade head
    ```
 
-5. 验证：访问 http://localhost:8081 (Adminer) 确认表结构已更新
+5. 验证表结构已更新：
+   ```bash
+   docker compose exec db psql -U postgres -d app -c "\d 表名"
+   ```

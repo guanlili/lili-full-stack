@@ -22,13 +22,13 @@ $ARGUMENTS — 功能名称，例如 `order`（订单）、`product`（产品）
    docker compose exec backend alembic upgrade head
    ```
 
-6. **重新生成前端客户端**：
+6. **重新生成前端客户端**（需要 backend 容器在运行）：
    ```bash
-   cd frontend && bun run generate-client
+   cd frontend && npm run generate-client
    ```
 
 7. **前端页面**：新建 `frontend/src/routes/_layout/$ARGUMENTS.tsx`，参考 `items.tsx` 的结构，实现列表页 + 新增/编辑弹窗
 
-8. **导航链接**：在 `frontend/src/components/Common/Sidebar.tsx`（或导航组件）中添加新页面的入口
+8. **导航链接**：在 `frontend/src/components/Sidebar/Main.tsx` 的导航项中添加新页面的入口
 
 完成后告知用户，并列出所有新建/修改的文件。
