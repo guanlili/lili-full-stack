@@ -1,6 +1,6 @@
 # Stage base: 安装依赖（dev / build 共用）
 # 注意：lockfile 需在仓库中提交（frontend/package-lock.json），npm ci 保证构建可复现
-FROM node:20-slim AS base
+FROM node:24-slim AS base
 
 WORKDIR /app/frontend
 
