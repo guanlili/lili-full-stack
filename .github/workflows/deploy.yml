@@ -42,6 +42,14 @@ jobs:
       EMAILS_FROM_EMAIL: noreply@example.com
     steps:
       - uses: actions/checkout@v4
+      - name: 校验 .env.example 与 deploy.yml 写入的键一致
+        run: |
+          if ! diff <(grep -oE '^[A-Z_]+=' .env.example | sort) \
+                    <(grep -oE 'echo "[A-Z_]+=' .github/workflows/deploy.yml | grep -oE '[A-Z_]+=' | sort); then
+            echo "❌ .env.example 与 deploy.yml「写入 .env」段落的环境变量键不一致。"
+            echo "   新增/删除配置项时必须两边同步，否则该变量在生产上是空值（静默失效）。"
+            exit 1
+          fi
       - uses: astral-sh/setup-uv@v5
       - name: 准备环境变量
         run: cp .env.example .env
@@ -97,6 +105,7 @@ jobs:
             echo "=== 1/4 拉最新代码 ==="
             git pull --ff-only
 
+            # 注意：下方键列表必须与 .env.example 保持一致（CI 的键校验步骤会拦截不一致）
             echo "=== 2/4 写入 .env（以 Secrets 为准）==="
             {
               echo "FRONTEND_HOST=${{ secrets.FRONTEND_HOST }}"
