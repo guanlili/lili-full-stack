@@ -6,11 +6,10 @@
       "**",
       "!**/dist/**/*",
       "!**/node_modules/**/*",
+      "!**/openapi.json",
       "!**/src/routeTree.gen.ts",
       "!**/src/client/**/*",
-      "!**/src/components/ui/**/*",
-      "!**/playwright-report",
-      "!**/playwright.config.ts"
+      "!**/src/components/ui/**/*"
     ]
   },
   "linter": {
