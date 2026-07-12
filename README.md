@@ -195,6 +195,28 @@ HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安
 
 恢复：`gunzip -c 备份文件.sql.gz | docker compose exec -T db psql -U postgres app`
 
+### 回滚
+
+CI 挡得住挂掉的构建，挡不住"测试全绿但业务逻辑错了"的版本。上线后发现坏版本：
+
+**常规回滚（推荐）**——revert 后走正常流水线，有 CI 门槛兜底：
+
+```bash
+git revert <坏提交>   # 或 git revert <坏起点>..<坏终点> 批量撤销
+git push              # 自动触发 CI → 部署 → 健康检查
+```
+
+**紧急回滚（生产事故，等不了 CI 的几分钟）**——直接在服务器上退：
+
+```bash
+ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> && docker compose -f compose.yml up -d --build"
+```
+
+> 紧急回滚只是止血：master 上坏提交还在，下次 push 会把它重新部署上去。
+> 止血后必须回到常规流程 revert + push，让远端历史与线上一致。
+
+**数据库迁移注意**：回滚代码不会回滚 Alembic 迁移。坏版本若只是**加**了表/列，旧代码通常兼容，直接回滚代码即可；若做了破坏性变更（删列、改类型），优先前向修复（fix + push）而不是 `alembic downgrade`——降级操作有数据丢失风险，动手前先做一次备份。
+
 ---
 
 ## 模板维护
