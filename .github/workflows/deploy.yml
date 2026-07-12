@@ -50,7 +50,7 @@ jobs:
             echo "   新增/删除配置项时必须两边同步，否则该变量在生产上是空值（静默失效）。"
             exit 1
           fi
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v7
       - name: 准备环境变量
         run: cp .env.example .env
       - name: 安装依赖
@@ -85,7 +85,7 @@ jobs:
         working-directory: frontend
         run: npm run build
       # 校验 src/client/ 与后端 OpenAPI 一致：后端接口改了但忘记 generate-client 时在这里拦下
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v7
       - name: 准备环境变量（导入 app 需要）
         run: cp .env.example .env
       - name: 导出后端 OpenAPI 规范
