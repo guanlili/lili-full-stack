@@ -119,6 +119,11 @@ docker compose down
 
 Claude Code 会按标准流程自动创建订单模块的全部后端和前端代码。
 
+仓库还内置了团队共享的权限白名单（`.claude/settings.json`）：日常开发的高频安全命令
+（docker compose、npm run、uv run、git 只读、gh 查看 CI 等）已预授权，克隆即用，
+少弹大部分权限框；破坏性操作（`down -v`、push、commit 等）仍会请求确认。
+个人偏好写在 `.claude/settings.local.json`（已被 gitignore，不入库）。
+
 ---
 
 ## 生产部署
