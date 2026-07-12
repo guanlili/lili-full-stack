@@ -6,7 +6,8 @@ WORKDIR /app/frontend
 COPY frontend/package.json ./
 
 # 不使用 package-lock.json：lock 文件在 macOS 生成，缺少 Linux x64 原生绑定
-RUN npm install --no-package-lock
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --no-package-lock
 
 COPY ./frontend ./
 
