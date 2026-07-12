@@ -42,4 +42,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 WORKDIR /app/backend/
 
-CMD ["fastapi", "run", "--workers", "4"]
+CMD ["sh", "-c", "fastapi run --workers ${WORKERS:-1}"]
