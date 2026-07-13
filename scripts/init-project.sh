@@ -9,7 +9,8 @@
 #   1. 从 .env.example 生成 .env，随机化 SECRET_KEY / 数据库密码 / 管理员密码
 #   2. PROJECT_NAME（.env）、APP_NAME（frontend/src/config.ts）、
 #      页面标题（frontend/index.html）统一改为项目名
-#   3. 输出剩余的手动待办清单
+#   3. COMPOSE_PROJECT_NAME 根据项目名自动生成 slug，容器名随项目走
+#   4. 输出剩余的手动待办清单
 
 set -e
 cd "$(dirname "$0")/.."
@@ -41,8 +42,24 @@ python3 - "$NAME" "$SECRET_KEY" "$DB_PASSWORD" "$ADMIN_PASSWORD" <<'EOF'
 import pathlib
 import re
 import sys
+import unicodedata
 
 name, secret, db_pwd, admin_pwd = sys.argv[1:5]
+
+
+def slugify(text: str) -> str:
+    """把项目名转成适合做容器前缀的 slug：小写、字母数字、短横线。
+    中文会被去掉（用 PROJECT_NAME 的中英文/数字部分），留英文和数字单词。
+    """
+    # 先把 Unicode 转成 ASCII（对带音标的拉丁字符有效，中文会变成空字符）
+    normalized = unicodedata.normalize("NFKD", text)
+    # 只保留字母、数字、空白和短横线
+    text = re.sub(r"[^a-zA-Z0-9\s-]", "", normalized)
+    # 空白和连续短横线都换成单个短横线
+    text = re.sub(r"[\s-]+", "-", text.strip().lower())
+    text = text.strip("-")
+    # 如果转出来是空的（比如全中文），fallback 到 my-project
+    return text or "my-project"
 
 
 def sub(path: str, pairs: list[tuple[str, str]]) -> None:
@@ -56,8 +73,11 @@ def sub(path: str, pairs: list[tuple[str, str]]) -> None:
     p.write_text(s)
 
 
+project_slug = slugify(name)
+
 sub(".env", [
     (r"^PROJECT_NAME=.*$", f'PROJECT_NAME="{name}"'),
+    (r"^COMPOSE_PROJECT_NAME=.*$", f"COMPOSE_PROJECT_NAME={project_slug}"),
     (r"^SECRET_KEY=.*$", f"SECRET_KEY={secret}"),
     (r"^POSTGRES_PASSWORD=.*$", f"POSTGRES_PASSWORD={db_pwd}"),
     (r"^FIRST_SUPERUSER_PASSWORD=.*$", f"FIRST_SUPERUSER_PASSWORD={admin_pwd}"),
@@ -71,12 +91,23 @@ sub("frontend/index.html", [
 EOF
 
 FIRST_SUPERUSER=$(grep '^FIRST_SUPERUSER=' .env | cut -d= -f2)
+COMPOSE_PROJECT_NAME=$(grep '^COMPOSE_PROJECT_NAME=' .env | cut -d= -f2)
+
+SLUG_WARNING=""
+if [ "$COMPOSE_PROJECT_NAME" = "my-project" ]; then
+  SLUG_WARNING="
+⚠️  项目名是纯中文，容器前缀回退为 my-project。
+    如果同一台机器上有多个项目，请手动修改 .env 里的 COMPOSE_PROJECT_NAME，
+    否则容器名会冲突（比如 order-system / customer-mgmt 这种英文缩写）。"
+fi
 
 cat <<DONE
+${SLUG_WARNING}
 
 ✅ 「${NAME}」初始化完成：
    - .env 已生成，SECRET_KEY / 数据库密码 / 管理员密码均为随机值
    - 前端 APP_NAME 和页面标题已改为「${NAME}」
+   - 容器名前缀：${COMPOSE_PROJECT_NAME}（如 ${COMPOSE_PROJECT_NAME}-backend-1）
 
    本地管理员账号：${FIRST_SUPERUSER} / ${ADMIN_PASSWORD}（也记录在 .env）
 

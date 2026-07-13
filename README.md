@@ -38,8 +38,11 @@ bash scripts/init-project.sh "项目显示名"
 ```
 
 脚本一次性完成：生成 `.env`（`SECRET_KEY`、数据库密码、管理员密码全部随机化）、
-统一改名（`PROJECT_NAME`、前端 `APP_NAME`、页面标题），并输出剩余待办清单。
+统一改名（`PROJECT_NAME`、前端 `APP_NAME`、页面标题）、
+自动生成容器名前缀（`COMPOSE_PROJECT_NAME`，从项目名推导），并输出剩余待办清单。
 本地管理员账号会打印在结果里（也记录在 `.env`）。
+> 纯中文项目名会回退为 `my-project`，如果同一台服务器上有多个项目，
+> 请手动修改 `.env` 里的 `COMPOSE_PROJECT_NAME`（和部署时的 GitHub Secret），避免容器名冲突。
 
 ### 第三步：更新项目文档
 
@@ -137,7 +140,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 **1. 配置 GitHub Secrets**
 
-在新仓库 **Settings → Secrets → Actions** 添加以下 11 个必填 Secret：
+在新仓库 **Settings → Secrets → Actions** 添加以下 12 个必填 Secret：
 
 | Secret | 必改 | 说明 | 示例 |
 |--------|:----:|------|------|
@@ -145,6 +148,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 | `SERVER_USER` | | SSH 用户名 | `root` |
 | `SERVER_SSH_KEY` | | SSH 私钥（完整内容）| `-----BEGIN...` |
 | `DEPLOY_PATH` | ✅ | 服务器部署路径，每个项目不同 | `/mnt/datadisk0/项目名` |
+| `COMPOSE_PROJECT_NAME` | ✅ | Docker Compose 项目名（容器前缀），同服务器各项目不能重复 | `order-mgmt` |
 | `APP_PORT` | ✅ | 前端暴露端口，同服务器上各项目不能重复 | `8083` |
 | `FRONTEND_HOST` | ✅ | 前端完整地址，与 `APP_PORT` 对应 | `http://42.193.108.162:8083` |
 | `SECRET_KEY` | ✅ | JWT 签名密钥，每个项目必须唯一 | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |

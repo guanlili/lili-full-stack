@@ -135,6 +135,7 @@ jobs:
               echo "FRONTEND_HOST=${{ secrets.FRONTEND_HOST }}"
               echo "ENVIRONMENT=production"
               echo "PROJECT_NAME=${{ secrets.PROJECT_NAME }}"
+              echo "COMPOSE_PROJECT_NAME=${{ secrets.COMPOSE_PROJECT_NAME }}"
               echo "BACKEND_CORS_ORIGINS=${{ secrets.FRONTEND_HOST }}"
               echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
               echo "FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}"
