@@ -86,7 +86,8 @@ const AddUser = () => {
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+    const { confirm_password: _, ...submitData } = data
+    mutation.mutate(submitData)
   }
 
   return (

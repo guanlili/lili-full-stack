@@ -91,6 +91,9 @@ jobs:
           save-cache: false
       - name: 准备环境变量（导入 app 需要）
         run: cp .env.example .env
+      - name: 安装后端依赖（导入 app.main 需要）
+        working-directory: backend
+        run: uv sync --no-dev
       - name: 导出后端 OpenAPI 规范
         working-directory: backend
         run: uv run python -c "import json, app.main; print(json.dumps(app.main.app.openapi()))" > ../frontend/openapi.json
@@ -141,13 +144,13 @@ jobs:
               echo "FIRST_SUPERUSER=${{ secrets.FIRST_SUPERUSER }}"
               echo "FIRST_SUPERUSER_PASSWORD=${{ secrets.FIRST_SUPERUSER_PASSWORD }}"
               echo "USERS_OPEN_REGISTRATION=${{ secrets.USERS_OPEN_REGISTRATION || 'false' }}"
-              echo "SMTP_HOST="
-              echo "SMTP_USER="
-              echo "SMTP_PASSWORD="
-              echo "EMAILS_FROM_EMAIL=info@example.com"
-              echo "SMTP_TLS=True"
-              echo "SMTP_SSL=False"
-              echo "SMTP_PORT=587"
+              echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
+              echo "SMTP_USER=${{ secrets.SMTP_USER }}"
+              echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}"
+              echo "EMAILS_FROM_EMAIL=${{ secrets.EMAILS_FROM_EMAIL || 'info@example.com' }}"
+              echo "SMTP_TLS=${{ secrets.SMTP_TLS || 'True' }}"
+              echo "SMTP_SSL=${{ secrets.SMTP_SSL || 'False' }}"
+              echo "SMTP_PORT=${{ secrets.SMTP_PORT || '587' }}"
               echo "POSTGRES_SERVER=db"
               echo "POSTGRES_PORT=5432"
               echo "POSTGRES_DB=app"

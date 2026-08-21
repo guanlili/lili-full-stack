@@ -36,8 +36,10 @@ def send_email(
     subject: str = "",
     html_content: str = "",
 ) -> None:
-    assert settings.emails_enabled, "no provided configuration for email variables"
-    assert settings.EMAILS_FROM_EMAIL  # For type checker
+    if not settings.emails_enabled:
+        raise ValueError("no provided configuration for email variables")
+    if not settings.EMAILS_FROM_EMAIL:
+        raise ValueError("EMAILS_FROM_EMAIL is not configured")
     message = emails.message.Message(
         subject=subject,
         html=html_content,
@@ -93,7 +95,6 @@ def generate_new_account_email(
         context={
             "project_name": settings.PROJECT_NAME,
             "username": username,
-            "password": password,
             "email": email_to,
             "link": settings.FRONTEND_HOST,
         },
