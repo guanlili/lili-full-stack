@@ -14,6 +14,13 @@ from tests.utils.utils import get_superuser_token_headers
 
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session]:
+    # 安全兜底：禁止在非 local 环境运行测试，防止清理逻辑误删生产数据
+    if settings.ENVIRONMENT != "local":
+        raise RuntimeError(
+            f"Refusing to run tests in ENVIRONMENT={settings.ENVIRONMENT}. "
+            "Tests perform destructive database operations (DELETE all rows). "
+            "Set ENVIRONMENT=local to run tests."
+        )
     with Session(engine) as session:
         init_db(session)
         yield session

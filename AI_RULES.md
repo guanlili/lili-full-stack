@@ -6,7 +6,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 ## 1. Technology Stack
 
 ### Backend (`/backend`)
-- **Framework**: FastAPI (Python 3.14，见 `pyproject.toml` 的 `requires-python`；代码可使用 3.14 语法特性，如不带括号的多异常 `except A, B:`)
+- **Framework**: FastAPI (Python 3.14，见 `pyproject.toml` 的 `requires-python`；代码可使用 3.14 语法特性)
 - **ORM**: SQLModel (SQLAlchemy + Pydantic)
 - **Database**: PostgreSQL (via Docker)
 - **Package Manager**: uv
