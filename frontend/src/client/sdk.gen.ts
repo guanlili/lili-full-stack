@@ -470,8 +470,7 @@ export class UtilsService {
     
     /**
      * Ready Check
-     * 就绪检查（readiness）：验证数据库连接可用，失败返回 503。
-     * 容器健康检查与部署后验证用它；数据库恢复后自动恢复正常。
+     * Bound the full database probe; expose no connection details on failure.
      * @returns Message Successful Response
      * @throws ApiError
      */

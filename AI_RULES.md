@@ -38,7 +38,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Type Hints**: Always use Python type hints.
   - `def get_user(id: uuid.UUID) -> User:`
 - **Pydantic**: Use Pydantic models for all API Request/Response schemas.
-- **Sync by default**: Route handlers and database operations use plain `def` with the sync SQLModel `Session` (see `items.py`). FastAPI runs them in a threadpool. Do NOT mix in async DB sessions — stay consistent with the existing code.
+- **Sync by default**: Route handlers and database operations use plain `def` with the sync SQLModel `Session` (see `items.py`). FastAPI runs them in a threadpool. Do NOT mix in async DB sessions — stay consistent with the existing code. The readiness probe is a narrow exception: a dedicated async psycopg connection allows cancellation of the complete network operation.
 - **Error Handling**: Use `HTTPException` for API errors. Do not return raw dictionaries for errors.
 - **401 vs 403**: 401 仅用于 token 无效/过期（前端收到 401 会自动登出）；403 用于"已登录但权限不足"。不要混用——权限不足返回 401 会把正常用户踢下线。
 
@@ -56,7 +56,7 @@ Follow these guidelines to ensure code stability, consistency, and maintainabili
 - **Local Dev**: `VITE_API_URL=http://localhost:8000` in override so frontend calls backend directly.
 - **Credentials**: NEVER commit `.env` or any secret to git（`.gitignore` 已忽略）. Production `.env` is regenerated from GitHub Secrets on every deploy — GitHub Secrets is the single source of truth.
 - **Deploy**: Push to `master` → CI (lint + tests + 前端客户端一致性) → server-side checkout 到该次 CI 验证过的 commit + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
-- **HTTP vs HTTPS**: Internal tools and demos run on plain `http://IP:port` (the template default) — do NOT add TLS/reverse-proxy machinery to individual projects. Projects going live for real users MUST use HTTPS via the server-level Caddy path documented in README（域名 + ICP 备案，备案需提前 1~3 周启动）. If a project is about to go live and still runs on HTTP, remind the user.
+- **HTTP vs HTTPS**: Internal tools and demos run on plain `http://IP:port` (the template default) — do NOT add TLS/reverse-proxy machinery to individual projects. Demos using microphone/camera or other secure-context APIs also require HTTPS when accessed remotely (localhost is exempt). Projects going live for real users MUST use HTTPS via the server-level Caddy path documented in README（域名 + ICP 备案，备案需提前 1~3 周启动）. If a project is about to go live and still runs on HTTP, remind the user.
 
 ## 4. Workflow & Best Practices
 

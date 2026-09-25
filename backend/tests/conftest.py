@@ -8,6 +8,7 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, delete
 
 from app.api.deps import get_db
+from app.api.routes.utils import get_readiness_dsn
 from app.core.config import settings
 from app.core.db import init_db
 from app.main import app
@@ -68,6 +69,9 @@ def db() -> Generator[Session]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_readiness_dsn] = lambda: test_uri.replace(
+        "postgresql+psycopg://", "postgresql://", 1
+    )
 
     with Session(engine) as session:
         init_db(session)
@@ -78,6 +82,7 @@ def db() -> Generator[Session]:
         session.commit()
 
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_readiness_dsn, None)
     engine.dispose()
 
 

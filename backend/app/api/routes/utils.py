@@ -1,10 +1,12 @@
+import asyncio
 import logging
+from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic.networks import EmailStr
-from sqlmodel import select
 
-from app.api.deps import SessionDep, get_current_active_superuser
+from app.api.deps import get_current_active_superuser
 from app.core.config import settings
 from app.models import Message
 from app.utils import generate_test_email, send_email
@@ -48,19 +50,38 @@ async def health_check() -> bool:
     return True
 
 
-@router.get("/ready-check/")
-def ready_check(session: SessionDep) -> Message:
-    """
-    就绪检查（readiness）：验证数据库连接可用，失败返回 503。
-    容器健康检查与部署后验证用它；数据库恢复后自动恢复正常。
-    """
+READINESS_TIMEOUT_SECONDS = 3
+
+
+def get_readiness_dsn() -> str:
+    return str(settings.SQLALCHEMY_DATABASE_URI).replace(
+        "postgresql+psycopg://", "postgresql://", 1
+    )
+
+
+async def probe_database(dsn: str) -> None:
+    # Dedicated short-lived connection: no waiting on the application's pool.
+    # The caller bounds the entire connect + query operation, including a silent peer.
+    conn = await psycopg.AsyncConnection.connect(dsn, autocommit=True)
+    query = asyncio.create_task(conn.execute("SELECT 1"))
     try:
-        # 限制单次探测 3 秒：DB 半死（连接挂起）时快速失败，不让探针请求堆积
-        conn = session.connection()
-        conn.exec_driver_sql("SET LOCAL statement_timeout = 3000")
-        session.exec(select(1))
+        # psycopg normally cancels queries via a second network connection. Shield
+        # that path so a timeout can close this disposable socket immediately.
+        await asyncio.shield(query)
+    finally:
+        await conn.close()
+        if not query.done():
+            query.cancel()
+        await asyncio.gather(query, return_exceptions=True)
+
+
+@router.get("/ready-check/")
+async def ready_check(dsn: Annotated[str, Depends(get_readiness_dsn)]) -> Message:
+    """Bound the full database probe; expose no connection details on failure."""
+    try:
+        async with asyncio.timeout(READINESS_TIMEOUT_SECONDS):
+            await probe_database(dsn)
     except Exception:
-        # 只记服务端日志，不向调用方暴露内部异常细节
         logger.warning("Readiness check failed: database not reachable")
         raise HTTPException(status_code=503, detail="Service not ready") from None
     return Message(message="Ready")

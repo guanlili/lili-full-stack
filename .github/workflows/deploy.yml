@@ -4,10 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-  # 生产部署入口仅 master：手动触发时 GitHub UI 只提供 master 可选，
-  # 防止从任意分支把未经合并的代码直接部署到生产目录
   workflow_dispatch:
-    branches: [master]
 
 # CI 检查按分支分组排队，不打断进行中的检查
 concurrency:
@@ -49,12 +46,14 @@ jobs:
       - name: 校验 .env.example 与 deploy.yml 写入的键一致
         run: |
           if ! diff <(grep -oE '^[A-Z_]+=' .env.example | tr -d '=' | sort) \
-                    <(sed -n 's/^ *keys=(\(.*\)).*/\1/p' .github/workflows/deploy.yml \
+                    <(sed -n 's/^ *keys=(\(.*\)).*/\1/p' scripts/generate-deploy-env.sh \
                       | tr ' ' '\n' | sed '/^$/d' | sort); then
-            echo "❌ .env.example 与 deploy.yml 的 keys 清单（写入 .env 的键）不一致。"
+            echo "❌ .env.example 与 generate-deploy-env.sh 的 keys 清单（写入 .env 的键）不一致。"
             echo "   新增/删除配置项时必须两边同步，否则该变量在生产上是空值（静默失效）。"
             exit 1
           fi
+      - name: 部署配置回归检查
+        run: python3 scripts/test_deploy.py
       - uses: astral-sh/setup-uv@v7
       - name: 准备环境变量
         run: cp .env.example .env
@@ -118,20 +117,23 @@ jobs:
     name: 部署到服务器
     needs: [backend, frontend]
     # PR 只跑检查不部署；push 事件本身已限定 master 分支
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    # 所有指向同一生产环境的部署共用这一把锁（master push 与 master 手动触发同组）：
-    #   - FIFO 排队，绝不中途取消进行中的部署（半途而废会留下未验证的中间状态）
-    #   - 连续 push 时旧提交的部署先完成、新提交的排队跟上，最终线上为最新提交
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # 同一生产环境互斥；过期提交在服务器持锁阶段跳过，不假设排队顺序。
     concurrency:
       group: production-deploy
       cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - name: 从 Secrets 生成 .env（base64 中转，值不进入 shell 源码）
         id: envfile
         # Secrets 只经 env: 进入进程环境，脚本里按变量名引用；
         # 任何 $、引号、反引号都不会被 shell 解释（对比直接拼进脚本文本的写法）
         env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           FRONTEND_HOST: ${{ secrets.FRONTEND_HOST }}
           PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
           COMPOSE_PROJECT_NAME: ${{ secrets.COMPOSE_PROJECT_NAME }}
@@ -150,82 +152,41 @@ jobs:
           SMTP_SSL: ${{ secrets.SMTP_SSL || 'False' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
         run: |
-          set -euo pipefail
-
-          # 部署通道必填（缺失时给出明确错误，而不是让 ssh-action 报晦涩的连接失败）
-          for k in SERVER_HOST SERVER_USER SERVER_SSH_KEY DEPLOY_PATH; do
-            v="${!k:-}"
-            if [[ -z "${v//[[:space:]]/}" ]]; then
-              echo "❌ Secret $k 缺失或为空白，无法部署"
-              exit 1
-            fi
-          done
-          # .env 必填键：缺失/空/纯空白一律失败（失败发生在触碰服务器之前）
-          for k in FRONTEND_HOST SECRET_KEY FIRST_SUPERUSER FIRST_SUPERUSER_PASSWORD POSTGRES_PASSWORD APP_PORT PROJECT_NAME COMPOSE_PROJECT_NAME; do
-            v="${!k:-}"
-            if [[ -z "${v//[[:space:]]/}" ]]; then
-              echo "❌ Secret $k 缺失或为空白（.env 必填项）"
-              exit 1
-            fi
-          done
-
-          # dotenv 序列化：双引号包裹，$ → $$（防 compose 插值）、" → \"、\ → \\。
-          # 换行值 .env 无法表达，直接报错（Secret 里出现换行基本是配错了）
-          serialize() {
-            local key=$1 value
-            value="${!key}"
-            if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
-              echo "❌ Secret $key 的值包含换行符，.env 不支持" >&2
-              return 1
-            fi
-            value="${value//\\/\\\\}"
-            value="${value//\"/\\\"}"
-            value="${value//\$/\$\$}"
-            printf '%s="%s"' "$key" "$value"
-          }
-
-          keys=(PROJECT_NAME COMPOSE_PROJECT_NAME SECRET_KEY FIRST_SUPERUSER FIRST_SUPERUSER_PASSWORD POSTGRES_PASSWORD FRONTEND_HOST ENVIRONMENT BACKEND_CORS_ORIGINS USERS_OPEN_REGISTRATION SMTP_HOST SMTP_USER SMTP_PASSWORD EMAILS_FROM_EMAIL SMTP_TLS SMTP_SSL SMTP_PORT POSTGRES_SERVER POSTGRES_PORT POSTGRES_DB POSTGRES_USER SENTRY_DSN APP_PORT WORKERS)
-
-          # 固定值 / 派生值（不来自 Secrets 的键在此赋值）
-          ENVIRONMENT=production
-          POSTGRES_SERVER=db
-          POSTGRES_PORT=5432
-          POSTGRES_DB=app
-          POSTGRES_USER=postgres
-          SENTRY_DSN=
-          # CORS 与前端同源（沿用原部署行为）
-          BACKEND_CORS_ORIGINS="$FRONTEND_HOST"
-
-          tmp=$(mktemp)
-          trap 'rm -f "$tmp"' EXIT
-          for k in "${keys[@]}"; do
-            serialize "$k" >> "$tmp"
-            printf '\n' >> "$tmp"
-          done
-
-          # base64 中转：传给 ssh 的只有一个纯 base64 字符串，
-          # 值本身永不出现在任何脚本文本或日志里
-          echo "env_b64=$(base64 -w0 < "$tmp")" >> "$GITHUB_OUTPUT"
+          bash scripts/generate-deploy-env.sh "$RUNNER_TEMP/deploy.env"
+          env_b64=$(base64 < "$RUNNER_TEMP/deploy.env" | tr -d '\n')
+          echo "::add-mask::$env_b64"
+          echo "env_b64=$env_b64" >> "$GITHUB_OUTPUT"
+          echo "path_b64=$(printf '%s' "$DEPLOY_PATH" | base64 | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/deploy.env"
 
       - name: 服务器拉代码并重启服务
         uses: appleboy/ssh-action@v1.2.2
         env:
           ENV_B64: ${{ steps.envfile.outputs.env_b64 }}
+          PATH_B64: ${{ steps.envfile.outputs.path_b64 }}
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 30m
-          envs: ENV_B64
+          envs: ENV_B64,PATH_B64,DEPLOY_SHA
           script: |
             set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+            umask 077
+            deploy_path=$(printf '%s' "$PATH_B64" | base64 -d)
+            cd "$deploy_path"
+            trap 'rm -f .env.new' EXIT
 
             echo "=== 1/5 checkout 到本次 CI 验证过的提交 ==="
             # 不用 git pull：pull 拿到的是"部署时刻的最新 master"，连续 push 时可能部署到还没过 CI 的提交。
             # reset --hard 到 github.sha 保证部署的永远是这个 run 测过的代码，也兼容紧急回滚后的服务器状态。
             git fetch origin
-            git reset --hard ${{ github.sha }}
+            if [ "$DEPLOY_SHA" != "$(git rev-parse origin/master)" ]; then
+              echo "Skipping superseded commit; deploy the current master through its own CI run."
+              exit 0
+            fi
+            git reset --hard "$DEPLOY_SHA"
 
             echo "=== 2/5 解码 .env 并校验 ==="
             printf '%s' "$ENV_B64" | base64 -d > .env.new
@@ -238,7 +199,7 @@ jobs:
               fi
             done
             # 这份配置必须能被 compose 完整解析（含 ${VAR?} 必填检查与插值合法性）
-            if ! docker compose -f compose.yml --env-file .env.new config --quiet; then
+            if ! COMPOSE_ENV_FILE=.env.new docker compose -f compose.yml --env-file .env.new config --quiet; then
               echo "❌ .env.new 无法通过 docker compose 校验，保留现有 .env 不变"
               exit 1
             fi
@@ -257,16 +218,17 @@ jobs:
             }
 
             echo "=== 5/5 验证（就绪检查 = 含数据库可用性；经 nginx 反代访问）==="
+            app_port=$(sed -n 's/^APP_PORT="\([0-9]*\)"$/\1/p' .env)
             healthy=""
             for i in $(seq 1 30); do
-              if curl -fsS "http://localhost:${{ secrets.APP_PORT }}/api/v1/utils/ready-check/" > /dev/null 2>&1; then
+              if curl --connect-timeout 2 --max-time 5 -fsS "http://localhost:$app_port/api/v1/utils/ready-check/" > /dev/null 2>&1; then
                 healthy=1
                 break
               fi
               sleep 2
             done
             if [ -z "$healthy" ]; then
-              echo "❌ 就绪检查 60 秒内未通过"
+              echo "❌ 就绪检查重试 30 次后仍未通过"
               docker compose -f compose.yml ps
               docker compose -f compose.yml logs backend --tail 50
               exit 1

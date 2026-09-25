@@ -11,3 +11,8 @@ node_modules/
 .agents/
 .claude/skills/
 .claude/settings.local.json
+
+# 部署临时配置（失败时也不得提交）
+.env.new
+.env.new.*
+__pycache__/

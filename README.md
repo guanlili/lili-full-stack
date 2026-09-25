@@ -201,7 +201,11 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 **部署入口与并发**：
 
 - 自动部署只来自 `master` 的 push；手动触发（workflow_dispatch）也仅限 `master` 分支，PR 只跑检查不部署。
-- 所有指向生产的部署共用一把并发锁，按触发顺序排队执行，**绝不中途取消**正在进行的部署。连续 push 时旧提交的部署先完整跑完、新提交排队跟上——最终线上一定是最新提交，且不会有两个部署同时操作同一生产目录。
+- 所有指向生产的部署共用一把并发锁，不自动取消正在进行的部署。不要依赖任务排队顺序：每次部署在服务器 fetch 后比较本次通过 CI 的提交与 `origin/master`，过期任务（包括旧任务重跑）直接跳过。最新提交必须通过自己的 CI 才能部署；若检查失败，保留当前线上版本。回滚使用 revert 生成新的 master 提交。
+
+部署配置生成脚本：`scripts/generate-deploy-env.sh`。候选文件 `.env.new` 同时用于 Compose 插值与容器环境校验，首次部署不依赖旧 `.env`；校验通过后才原子替换。配置文件权限为 600，失败时清理候选文件。
+
+本地可运行 `python3 scripts/test_deploy.py` 验证首次部署、旧配置隔离、特殊字符和必填校验（需要 Docker Compose CLI，无需启动容器）。就绪检查使用独立连接，对连接和查询设置合计 3 秒的超时；数据库不可用返回 503，恢复后探测恢复。Docker 的 unhealthy 状态本身不会触发自动重启。
 
 > `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。**`.env` 永远不要提交到 git**（已被 `.gitignore` 忽略）。
 
