@@ -35,6 +35,15 @@ docker compose down         # 停止
 
 查看数据库：`docker compose exec db psql -U postgres -d app`
 
+运行后端测试（需要数据库在运行；测试自动创建并使用**独立测试库** `app_test`，不碰开发库 `app`）：
+
+```bash
+cd backend
+uv run bash scripts/tests-start.sh   # conftest 自动创建 app_test 并在其中建表、清库
+```
+
+测试库指向应用库时（`POSTGRES_DB_TEST` 与 `POSTGRES_DB` 相同）会在任何建表/删数据操作之前直接拒绝运行。
+
 ## 开发新功能的标准流程
 
 > 本节是流程的唯一权威版本（README 只留概览指向这里）。
@@ -42,7 +51,7 @@ docker compose down         # 停止
 1. **后端**：在 `models.py` 加数据模型 → 在 `crud.py` 加增删改查 → 在 `api/routes/` 加新路由文件 → 在 `api/main.py` 注册路由
 2. **数据库迁移**：`docker compose exec backend alembic revision --autogenerate -m "add xxx"` → `alembic upgrade head`
 3. **前端 API 客户端**：后端改完后重新生成 → `cd frontend && npm run generate-client`（脚本会从运行中的 backend 容器导出最新 OpenAPI 规范再生成）
-4. **前端页面**：在 `routes/_layout/` 加新页面，在 `_layout.tsx` 加导航链接
+4. **前端页面**：在 `routes/_layout/` 加新页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的 `baseItems` 里加导航链接（Admin 入口已按 `is_superuser` 条件展示，可参考）
 
 ## 示例代码说明
 

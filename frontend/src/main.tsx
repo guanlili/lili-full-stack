@@ -23,6 +23,9 @@ const handleApiError = (error: Error) => {
   // 一并登出会把正常用户误踢下线（例如访问一个无权限的资源）
   if (error instanceof ApiError && error.status === 401) {
     localStorage.removeItem("access_token")
+    // 整页跳转而非 SPA 路由：应用完全重载会重建 queryClient，
+    // 天然清空全部缓存与在途请求，与主动退出（useAuth.logout 的
+    // cancelQueries + clear）等效
     window.location.href = "/login"
   }
 }
