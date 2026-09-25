@@ -54,11 +54,24 @@ bash scripts/init-project.sh "项目显示名"
 
 模板自带一个 Items（条目）CRUD 示例，展示了标准开发模式，开发完后删除：
 
-- `backend/app/api/routes/items.py`
-- `backend/app/models.py` 中的 `Item` / `ItemCreate` / `ItemUpdate` / `ItemPublic` 模型
+**后端**
+
+- `backend/app/api/routes/items.py`（路由）及 `api/main.py` 里的注册行
+- `backend/app/models.py` 中的 `Item` / `ItemCreate` / `ItemUpdate` / `ItemPublic` / `ItemsPublic` 模型，以及 `User.items` 关系字段（`Relationship(back_populates="items", cascade_delete=True)`）
 - `backend/app/crud.py` 中 Item 相关的函数
-- `frontend/src/routes/_layout/items.tsx`
-- 导航组件中 Items 的链接
+- `backend/tests/api/routes/test_items.py`（关联测试），`tests/conftest.py` 清理逻辑里的 `delete(Item)`
+- `backend/app/core/db.py` 若有 Item 引用一并清理
+
+**前端**
+
+- `frontend/src/routes/_layout/items.tsx`（页面）与路由引用
+- `frontend/src/components/Items/`（AddEntity / EditEntity 等组件）
+- `frontend/src/components/Sidebar/AppSidebar.tsx` 的 `baseItems` 里 Items 链接
+
+**数据库（按项目阶段二选一）**
+
+- **全新项目（还没上线）**：直接删模型即可，同时删掉 `backend/app/alembic/versions/` 里创建 `item` 表的迁移文件；或保留迁移历史不动（表残留但无害）。二选一，别混用。
+- **已有数据的项目**：模型删掉后**必须生成一个 drop table 迁移**（`alembic revision --autogenerate -m "drop items"`），否则数据库里残留孤儿表；确认表里没有要保留的数据再删。
 
 同时**决定注册方式**：自助注册默认只在本地开启（生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关）。
 如果项目是"管理员建账号"模式，交付前把注册入口一并删掉：`frontend/src/routes/signup.tsx` 和登录页上的注册链接。
@@ -159,12 +172,23 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 > `BACKEND_CORS_ORIGINS` 自动与 `FRONTEND_HOST` 保持一致，无需单独配置。
 
-另有 2 个**可选** Secret（不设置则用默认值）：
+另有以下**可选** Secret（不设置则用默认值）：
 
 | Secret | 默认 | 说明 |
 |--------|------|------|
 | `USERS_OPEN_REGISTRATION` | `false` | 是否开放自助注册。生产默认关闭（管理员在后台建账号）；产品需要用户自行注册时设为 `true` |
 | `WORKERS` | `1` | 后端 worker 进程数，大流量项目可调至 CPU 核数×2+1 |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_TLS` / `SMTP_SSL` | 空 / `587` / `True` / `False` | SMTP 服务器配置。**`SMTP_HOST` 为空 = 邮件功能整体关闭** |
+| `SMTP_USER` / `SMTP_PASSWORD` | 空 | SMTP 认证（无认证的内部中继可留空） |
+| `EMAILS_FROM_EMAIL` | `info@example.com` | 发件人地址（邮件功能开启时建议设置真实地址） |
+
+**未配置邮件（`SMTP_HOST` 为空）时的实际行为**：
+
+- 创建用户：成功，不发欢迎邮件（管理员建账号时密码线下告知）
+- 找回密码：接口仍返回成功文案（防账号枚举），但**不会发出任何邮件**，服务端日志会记 warning 提醒；用户实际无法自助重置密码，需要管理员在后台改密
+- 测试邮件接口（`/utils/test-email/`）：返回明确错误
+
+所以**产品需要"忘记密码"自助找回时，SMTP 相关 Secret 必须配齐**。
 
 **2. 服务器上 clone 一次**
 
@@ -172,7 +196,16 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 ```
 
-只需做一次。之后 push 到 `master` 即自动触发：**CI（后端 lint + 测试、前端 lint + 构建、前后端客户端一致性）→ 全部通过才部署** → checkout 到该次 CI 验证过的 commit → 从 Secrets 写入 `.env` → 构建镜像 → 跑 Alembic 迁移 → 重启容器 → 健康检查验证 → 清理旧镜像。
+只需做一次。之后 push 到 `master` 即自动触发：**CI（后端 lint + 测试、前端 lint + 构建、前后端客户端一致性）→ 全部通过才部署** → checkout 到该次 CI 验证过的 commit → 从 Secrets 生成 `.env`（base64 中转 + 校验通过后原子替换，特殊字符安全、日志不落值）→ 构建镜像 → 跑 Alembic 迁移 → 重启容器 → 就绪检查（含数据库）验证 → 清理旧镜像。
+
+**部署入口与并发**：
+
+- 自动部署只来自 `master` 的 push；手动触发（workflow_dispatch）也仅限 `master` 分支，PR 只跑检查不部署。
+- 所有指向生产的部署共用一把并发锁，不自动取消正在进行的部署。不要依赖任务排队顺序：每次部署在服务器 fetch 后比较本次通过 CI 的提交与 `origin/master`，过期任务（包括旧任务重跑）直接跳过。最新提交必须通过自己的 CI 才能部署；若检查失败，保留当前线上版本。回滚使用 revert 生成新的 master 提交。
+
+部署配置生成脚本：`scripts/generate-deploy-env.sh`。候选文件 `.env.new` 同时用于 Compose 插值与容器环境校验，首次部署不依赖旧 `.env`；校验通过后才原子替换。配置文件权限为 600，失败时清理候选文件。
+
+本地可运行 `python3 scripts/test_deploy.py` 验证首次部署、旧配置隔离、特殊字符和必填校验（需要 Docker Compose CLI，无需启动容器）。就绪检查使用独立连接，对连接和查询设置合计 3 秒的超时；数据库不可用返回 503，恢复后探测恢复。Docker 的 unhealthy 状态本身不会触发自动重启。
 
 > `.env` 每次部署都由 workflow 从 Secrets 重新生成，GitHub Secrets 是唯一配置源。**`.env` 永远不要提交到 git**（已被 `.gitignore` 忽略）。
 
@@ -182,10 +215,11 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 
 | 项目性质 | 方案 |
 |---------|------|
-| 内网工具、临时演示 | `http://IP:端口`（模板默认），够用，不折腾 |
+| 内网工具、临时演示（不用麦克风/摄像头等 API） | `http://IP:端口`（模板默认），够用，不折腾 |
+| 需要麦克风、摄像头、剪贴板、地理定位、通知等**安全上下文 API** 的项目 | **必须 HTTPS，哪怕是临时远程演示**（见下） |
 | 正式上线、面向真实用户 | **必须 HTTPS**，按下面三步走 |
 
-HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安全"、剪贴板/摄像头等 API 不可用——演示可以接受，正式上线不行。
+HTTP 明文意味着 JWT token 和登录密码裸奔公网、浏览器标"不安全"。另外**普通 HTTP 的 IP 地址（非 localhost）不是"安全上下文"**——`getUserMedia`（麦克风/摄像头）、剪贴板写入、Notification 等浏览器 API 在 `http://IP:端口` 下会被浏览器直接禁用，页面写 `navigator.mediaDevices` 拿到的是 `undefined`。这类功能的项目给客户做远程演示时也必须走 HTTPS（本机 `http://localhost` 例外，它算安全上下文）。
 
 **正式上线三步（前置条件：已备案域名）：**
 
@@ -308,7 +342,7 @@ lili-full-stack/
 | pre-commit 钩子 | CI 是唯一质量门槛。本地钩子对 AI 驱动的开发是摩擦（AI 每次提交都会被格式化钩子打断），且和 CI 重复 |
 | staging 环境 | 单服务器多项目、快速交付定位。staging 的维护成本大于收益；重要变更靠 CI 门槛 + 部署后健康检查兜底 |
 | JWT refresh token | 8 天 access token + localStorage 是简单性取舍，适合工具型产品。对安全有更高要求的项目再升级会话机制 |
-| 登录接口限流 | 不在代码层加依赖。正式上线的项目在 Caddy 层做 `rate_limit`（见 HTTPS 章节），内网/演示项目不需要 |
+| 登录接口限流 | 不在代码层加依赖。`rate_limit` **不是 Caddy 内置模块**——官方发行版不带，需要用 `xcaddy` 自行构建含 `caddy-ratelimit` 插件的二进制（或换用云防火墙/WAF 做限流）；模板不提供也不默认包含，正式上线且暴露公网时再评估 |
 | 重置密码 token 一次性失效 | token 48 小时内可重复使用（改完密码不作废）。工具型项目风险低；高安全要求的项目可把 token 绑定当前密码 hash（密码一改即失效） |
 | 生产环境隐藏 `/docs`、`/redoc` | API 文档公开对内网工具是便利。正式上线面向公网的项目建议关闭（`ENVIRONMENT=production` 时设 `docs_url=None`）或在 Caddy 层加 basic auth |
 | Kubernetes / 多机编排 | 单服务器 docker compose 覆盖当前所有项目规模。规模到了再迁移，不预支复杂度 |

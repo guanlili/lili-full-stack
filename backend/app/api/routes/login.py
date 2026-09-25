@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from typing import Annotated, Any
 
@@ -18,6 +19,8 @@ from app.utils import (
 )
 
 router = APIRouter(tags=["login"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/login/access-token")
@@ -60,15 +63,24 @@ def recover_password(email: str, session: SessionDep) -> Message:
     # Always return the same response to prevent email enumeration attacks
     # Only send email if user actually exists
     if user:
-        password_reset_token = generate_password_reset_token(email=email)
-        email_data = generate_reset_password_email(
-            email_to=user.email, email=email, token=password_reset_token
-        )
-        send_email(
-            email_to=user.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        if not settings.emails_enabled:
+            # 邮件未配置（SMTP_HOST / EMAILS_FROM_EMAIL 缺失）时不能让接口 500，
+            # 仍返回同样的防枚举响应，服务端记日志提醒运维
+            logger.warning(
+                "Password recovery requested for an existing user, but email is "
+                "not configured (SMTP_HOST / EMAILS_FROM_EMAIL missing); "
+                "no email sent."
+            )
+        else:
+            password_reset_token = generate_password_reset_token(email=email)
+            email_data = generate_reset_password_email(
+                email_to=user.email, email=email, token=password_reset_token
+            )
+            send_email(
+                email_to=user.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
     return Message(
         message="If that email is registered, we sent a password recovery link"
     )

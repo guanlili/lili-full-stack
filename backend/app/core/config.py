@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
+    # 测试专用库（conftest 会拒绝它指向开发库）。默认挂在同一实例上，CI/本地零配置
+    POSTGRES_DB_TEST: str = "app_test"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -65,6 +67,18 @@ class Settings(BaseSettings):
             host=self.POSTGRES_SERVER,
             port=self.POSTGRES_PORT,
             path=self.POSTGRES_DB,
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_TEST_URI(self) -> PostgresDsn:
+        return PostgresDsn.build(
+            scheme="postgresql+psycopg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            path=self.POSTGRES_DB_TEST,
         )
 
     SMTP_TLS: bool = True
