@@ -144,13 +144,13 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 | Secret | 必改 | 说明 | 示例 |
 |--------|:----:|------|------|
-| `SERVER_HOST` | | 服务器 IP | `42.193.108.162` |
+| `SERVER_HOST` | | 服务器 IP | `你的服务器IP` |
 | `SERVER_USER` | | SSH 用户名 | `root` |
 | `SERVER_SSH_KEY` | | SSH 私钥（完整内容）| `-----BEGIN...` |
 | `DEPLOY_PATH` | ✅ | 服务器部署路径，每个项目不同 | `/mnt/datadisk0/项目名` |
 | `COMPOSE_PROJECT_NAME` | ✅ | Docker Compose 项目名（容器前缀），同服务器各项目不能重复 | `order-mgmt` |
 | `APP_PORT` | ✅ | 前端暴露端口，同服务器上各项目不能重复 | `8083` |
-| `FRONTEND_HOST` | ✅ | 前端完整地址，与 `APP_PORT` 对应 | `http://42.193.108.162:8083` |
+| `FRONTEND_HOST` | ✅ | 前端完整地址，与 `APP_PORT` 对应 | `http://你的服务器IP:8083` |
 | `SECRET_KEY` | ✅ | JWT 签名密钥，每个项目必须唯一 | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `PROJECT_NAME` | ✅ | 项目名称（显示在邮件等处）| `我的项目` |
 | `POSTGRES_PASSWORD` | | 数据库密码，建议各项目不同 | 自定义强密码 |
