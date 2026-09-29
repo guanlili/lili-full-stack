@@ -57,7 +57,7 @@ uv run bash scripts/tests-start.sh
 1. **数据库变化**：修改 `models.py`，补充 CRUD、路由和测试。
 2. **数据库迁移**：运行 `docker compose exec backend alembic revision --autogenerate -m "add xxx"`，检查迁移内容后再 `alembic upgrade head`。
 3. **API 契约变化**：后端接口稳定后运行 `cd frontend && npm run generate-client`。
-4. **前端页面**：在 `routes/_layout/` 添加页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的 `baseItems` 中按需添加导航链接。
+4. **前端页面**：在 `routes/_layout/` 添加页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的导航项中按需添加链接。
 5. **仅业务逻辑变化**：补充或更新后端 API/CRUD 测试；不需要生成迁移时不要生成迁移。
 
 后端改动模型或接口后，必须确认前端生成客户端和相关测试已同步。生成文件不得手动编辑。
@@ -76,8 +76,8 @@ uv run bash scripts/tests-start.sh
 
 ```bash
 cd frontend
+npm run lint:check
 npm run build
-npm run lint
 ```
 
 交付前还要检查：
@@ -85,11 +85,11 @@ npm run lint
 - 数据库迁移只包含本次需求的变化。
 - `frontend/src/client/` 与后端 OpenAPI 契约一致。
 - 401/403 语义、角色权限和未登录行为有对应测试或手工验证。
-- Items 示例和临时调试代码已按项目需要删除或替换。
+- 模板不预置业务 CRUD 示例；交付前确认没有临时调试代码和测试数据。
 
-## 示例代码说明
+## 模块开发说明
 
-`backend/app/api/routes/items.py` 和 `frontend/src/routes/_layout/items.tsx` 是模板自带的 CRUD 示例，只用于展示开发模式。新项目应在初始化阶段决定保留、改造或删除它们，并同步清理迁移、导航和测试。
+模板只提供认证、用户管理、权限、基础布局和空 Dashboard。新业务模块应根据 `PROJECT_CONTEXT.md` 从数据模型、API、测试、生成客户端和页面导航开始实现。
 
 ## 技术规范
 

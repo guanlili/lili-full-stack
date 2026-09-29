@@ -66,9 +66,8 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
-              All items associated with this user will also be{" "}
-              <strong>permanently deleted.</strong> Are you sure? You will not
-              be able to undo this action.
+              This action will permanently delete the user and cannot be undone.
+              Are you sure you want to continue?
             </DialogDescription>
           </DialogHeader>
 

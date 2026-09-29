@@ -12,7 +12,7 @@ from app.api.routes.utils import get_readiness_dsn
 from app.core.config import settings
 from app.core.db import init_db
 from app.main import app
-from app.models import Item, User
+from app.models import User
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -77,7 +77,6 @@ def db() -> Generator[Session]:
         init_db(session)
         yield session
         # 清理测试库数据（独立库内，无开发数据风险）
-        session.exec(delete(Item))  # type: ignore[call-overload]
         session.exec(delete(User))  # type: ignore[call-overload]
         session.commit()
 
