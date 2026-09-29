@@ -35,7 +35,7 @@ for script in scripts/*.sh backend/scripts/*.sh frontend/scripts/*.sh; do
   bash -n "$script"
 done
 
-if git grep -n -E 'backend/app/api/routes/items\.py|frontend/src/routes/_layout/items\.tsx|ItemsService|class Item(Base|Create|Public|Update)|test_items' -- .; then
+if git grep -n -E 'backend/app/api/routes/items\.py|frontend/src/routes/_layout/items\.tsx|ItemsService|class Item(Base|Create|Public|Update)|test_items' -- . ':!scripts/check-template.sh'; then
   echo "❌ 检测到模板业务示例残留，请删除后再交付。" >&2
   exit 1
 fi
