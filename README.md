@@ -94,11 +94,8 @@ docker compose down
 
 ## 新功能开发流程
 
-**开发流程权威版本在 [CLAUDE.md](CLAUDE.md)**，项目业务上下文权威版本在 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)。此处只留概览，避免多份文档漂移：
-
-> 后端加模型/CRUD/路由 → Alembic 迁移 → `cd frontend && npm run generate-client` 同步客户端 → 前端加页面。
-
-编码规范（命名、类型、禁止模式）见 [AI_RULES.md](AI_RULES.md)。前端代码检查使用 `npm run lint:check`，自动格式化使用 `npm run lint`。
+开发流程见 [CLAUDE.md](CLAUDE.md)，项目上下文见 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)，编码和安全规范见 [AI_RULES.md](AI_RULES.md)。
+前端代码检查使用 `npm run lint:check`，需要自动格式化时使用 `npm run lint`。
 
 ---
 
@@ -152,7 +149,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 ### 从模板同步改进到现有项目
 
-模板和具体项目是独立仓库，没有 git 关联。需要手动同步时，把模板级文件（`AGENTS.md`、`CLAUDE.md`、`AI_RULES.md`、`compose.yml`、`.claude/commands/`）复制过去；不要覆盖客户项目自己的 `PROJECT_CONTEXT.md`。
+模板和具体项目是独立仓库，没有 git 关联。需要手动同步时，把模板级文件（`AGENTS.md`、`CLAUDE.md`、`AI_RULES.md`、`docs/`、`compose.yml`、`.claude/commands/`）复制过去；不要覆盖客户项目自己的 `PROJECT_CONTEXT.md`。
 
 ---
 
@@ -174,20 +171,8 @@ lili-full-stack/
 │   └── deployment.md      # 生产部署、HTTPS、备份与回滚
 ├── compose.yml            # 生产 Docker Compose
 ├── compose.override.yml   # 本地开发覆盖配置
-├── backend/
-│   └── app/
-│       ├── api/routes/    # FastAPI 路由
-│       ├── core/          # 配置、认证、数据库
-│       ├── alembic/       # 数据库迁移文件
-│       ├── models.py      # SQLModel 数据模型
-│       └── crud.py        # 数据库操作
-└── frontend/
-    ├── scripts/           # generate-client.sh / regen-lockfile.sh
-    └── src/
-        ├── routes/        # 页面（_layout/ 下需要登录）
-        ├── components/    # 组件
-        ├── hooks/         # 自定义 hooks
-        └── client/        # 自动生成的 API 客户端（勿手动修改）
+├── backend/               # FastAPI 应用、迁移和测试
+└── frontend/              # React 应用、页面和生成客户端
 ```
 
 ---
