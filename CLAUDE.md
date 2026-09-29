@@ -76,9 +76,11 @@ uv run bash scripts/tests-start.sh
 
 ```bash
 cd frontend
-npm run lint:check
+npm run lint
 npm run build
 ```
+
+需要自动修复格式时使用 `npm run lint:fix`；`npm run lint` 只检查，不修改工作区。
 
 交付前还要检查：
 
@@ -86,6 +88,7 @@ npm run build
 - `frontend/src/client/` 与后端 OpenAPI 契约一致。
 - 401/403 语义、角色权限和未登录行为有对应测试或手工验证。
 - 模板不预置业务 CRUD 示例；交付前确认没有临时调试代码和测试数据。
+- 交付前运行 `bash scripts/check-template.sh`，确认模板文件、脚本语法和 Compose 配置完整。
 
 ## 模块开发说明
 

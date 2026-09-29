@@ -23,7 +23,7 @@ $ARGUMENTS — 功能名称或需求描述，例如 `订单管理`、`客户可�
    ```
 7. **实现前端**：在 `frontend/src/routes/`、`frontend/src/components/` 和 `frontend/src/hooks/` 中按现有模式实现页面和数据请求。
 8. **更新导航**：需要出现在侧边栏时，修改 `frontend/src/components/Sidebar/AppSidebar.tsx`；不要手动修改自动生成的路由树。
-9. **验证**：运行后端 lint/测试、`cd frontend && npm run lint:check && npm run build`，并检查生成客户端的变更。
+9. **验证**：运行后端 lint/测试、`cd frontend && npm run lint && npm run build`，并检查生成客户端的变更。
 
 ## 交付说明
 

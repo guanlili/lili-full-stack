@@ -95,7 +95,10 @@ docker compose down
 ## 新功能开发流程
 
 开发流程见 [CLAUDE.md](CLAUDE.md)，项目上下文见 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)，编码和安全规范见 [AI_RULES.md](AI_RULES.md)。
-前端代码检查使用 `npm run lint:check`，需要自动格式化时使用 `npm run lint`。
+前端代码检查使用 `npm run lint`，需要自动格式化时使用 `npm run lint:fix`。
+`npm run lint` 只检查，不会修改工作区。
+
+交付前可运行 `bash scripts/check-template.sh`，检查模板文件、脚本语法、Compose 配置和示例残留。
 
 ---
 
@@ -119,10 +122,9 @@ docker compose down
 Claude Code 会按标准流程自动创建订单模块的全部后端和前端代码。
 
 仓库还内置了团队共享的权限白名单（`.claude/settings.json`）：日常开发的高频命令
-（docker compose、npm run、uv run、git 只读、gh 查看 CI 等）已预授权，克隆即用，
-少弹大部分权限框；破坏性操作（`down -v`、push、commit 等）仍会请求确认。
-注意边界：`uv run *` 和 `docker compose exec backend *` 实质上允许 AI 免确认执行任意代码——
-这是"减少弹框"的有意取舍，团队成员应知情；要求更严格的项目可自行收窄白名单。
+（docker compose、npm run、后端检查、git 只读、gh 查看 CI 等）已预授权，克隆即用。
+涉及提交、推送、依赖锁文件和任意脚本执行的命令仍会请求确认；个人偏好写在
+`.claude/settings.local.json`（已被 gitignore，不入库）。
 个人偏好写在 `.claude/settings.local.json`（已被 gitignore，不入库）。
 
 ---
