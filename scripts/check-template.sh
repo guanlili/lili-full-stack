@@ -40,7 +40,7 @@ if git grep -n -E 'backend/app/api/routes/items\.py|frontend/src/routes/_layout/
   exit 1
 fi
 
-docker compose --env-file .env.example -f compose.yml config --quiet
+COMPOSE_ENV_FILE=.env.example docker compose --env-file .env.example -f compose.yml config --quiet
 git diff --check
 
 echo "✅ 模板完整性检查通过"
