@@ -1,79 +1,64 @@
 # AI Development Guidelines & Coding Standards
 
-This project is a Full Stack application using **FastAPI** (Backend) and **React + Vite** (Frontend).
-Follow these guidelines to ensure code stability, consistency, and maintainability.
+本文件只维护编码、安全、权限和部署规则。具体技术版本以 `backend/pyproject.toml`、`frontend/package.json` 和 `.python-version` 为准。
 
-## 1. Technology Stack
+## 技术边界
 
-### Backend (`/backend`)
-- **Framework**: FastAPI (Python 3.14，见 `pyproject.toml` 的 `requires-python`；代码可使用 3.14 语法特性)
-- **ORM**: SQLModel (SQLAlchemy + Pydantic)
-- **Database**: PostgreSQL (via Docker)
-- **Package Manager**: uv
-- **Linting**: Ruff (strict adherence required)
-- **Type Checking**: ty (Astral, error-on-warning)
+- 后端：FastAPI + SQLModel + PostgreSQL，使用 uv、Ruff 和 ty。
+- 前端：React + Vite + TypeScript，使用 TanStack Query/Router、TailwindCSS、Radix UI 和 Biome。
+- 数据库变更使用 Alembic；前端 API 客户端由 OpenAPI 自动生成。
 
-### Frontend (`/frontend`)
-- **Framework**: React 19
-- **Build Tool**: Vite
-- **Language**: TypeScript
-- **Styling**: TailwindCSS v4
-- **State/Data**: TanStack Query (React Query)
-- **Routing**: TanStack Router
-- **UI Components**: Radix UI + Lucide React (Icons)
-- **Linting/Formatting**: Biome
+## 编码规范
 
-## 2. Coding Conventions
+### 通用
 
-### General
-- **Naming**:
-  - Python: `snake_case` for variables/functions, `PascalCase` for classes.
-  - TypeScript: `camelCase` for variables/functions, `PascalCase` for components/interfaces.
-  - Files:
-    - Python: `snake_case.py`
-    - TypeScript: `kebab-case.ts` (utils/hooks) or `PascalCase.tsx` (components).
-- **Comments**: Write clear, concise comments for complex logic. Avoid stating the obvious.
+- Python 使用 `snake_case`，类使用 `PascalCase`。
+- TypeScript 变量和函数使用 `camelCase`，组件和类型使用 `PascalCase`。
+- 复杂逻辑写简洁注释，不要注释显而易见的代码。
+- 保持组件小而专一；优先一文件一个组件。
 
-### Backend (Python)
-- **Type Hints**: Always use Python type hints.
-  - `def get_user(id: uuid.UUID) -> User:`
-- **Pydantic**: Use Pydantic models for all API Request/Response schemas.
-- **Sync by default**: Route handlers and database operations use plain `def` with the sync SQLModel `Session` (see `items.py`). FastAPI runs them in a threadpool. Do NOT mix in async DB sessions — stay consistent with the existing code. The readiness probe is a narrow exception: a dedicated async psycopg connection allows cancellation of the complete network operation.
-- **Error Handling**: Use `HTTPException` for API errors. Do not return raw dictionaries for errors.
-- **401 vs 403**: 401 仅用于 token 无效/过期（前端收到 401 会自动登出）；403 用于"已登录但权限不足"。不要混用——权限不足返回 401 会把正常用户踢下线。
+### 后端
 
-### Frontend (TypeScript/React)
-- **Components**: Use Functional Components with Hooks.
-- **Strict Mode**: Do not use `any`. Define proper Interfaces or Types.
-- **Styles**: Use Tailwind utility classes. Avoid inline `style={{}}` unless dynamic.
-- **Fetching**: Use custom hooks wrapping `useQuery` / `useMutation` for API interactions.
-- **Imports**: Use absolute imports (e.g., `@/components/...`) where possible.
+- 所有函数使用类型标注；API 请求和响应使用 Pydantic/SQLModel 模型。
+- 路由和数据库操作默认使用同步 `def` 与同步 SQLModel `Session`，不要混用异步数据库会话。
+- readiness probe 可以使用专用异步 psycopg 连接，以支持完整网络操作取消。
+- 使用 `HTTPException` 返回 API 错误，不返回原始错误字典。
+- 使用 `logging`，生产代码禁止 `print()`。
+- 在 API 边界校验输入。
 
-## 3. Deployment & Infrastructure
+### 前端
 
-- **Compose**: `compose.yml` is production. `compose.override.yml` is local dev (auto-applied).
-- **API Routing**: nginx proxies `/api`, `/docs`, `/redoc` to the `backend` container. `VITE_API_URL` is empty in production (relative URLs).
-- **Local Dev**: `VITE_API_URL=http://localhost:8000` in override so frontend calls backend directly.
-- **Credentials**: NEVER commit `.env` or any secret to git（`.gitignore` 已忽略）. Production `.env` is regenerated from GitHub Secrets on every deploy — GitHub Secrets is the single source of truth.
-- **Deploy**: Push to `master` → CI (lint + tests + 前端客户端一致性) → server-side checkout 到该次 CI 验证过的 commit + `docker compose up -d --build`. See `.github/workflows/deploy.yml`.
-- **HTTP vs HTTPS**: Internal tools and demos run on plain `http://IP:port` (the template default) — do NOT add TLS/reverse-proxy machinery to individual projects. Demos using microphone/camera or other secure-context APIs also require HTTPS when accessed remotely (localhost is exempt). Projects going live for real users MUST use HTTPS via the server-level Caddy path documented in README（域名 + ICP 备案，备案需提前 1~3 周启动）. If a project is about to go live and still runs on HTTP, remind the user.
+- 使用函数组件和 Hooks。
+- TypeScript 禁止 `any`，为数据和组件定义明确类型。
+- 使用 Tailwind 工具类；只有动态值才使用 inline style。
+- API 请求通过封装 `useQuery`/`useMutation` 的 hooks 完成。
+- 尽量使用 `@/` 绝对导入。
+- 禁止直接操作 DOM，除非确实需要并通过 ref 完成。
 
-## 4. Workflow & Best Practices
+## 权限和错误语义
 
-- **Modularity**: Keep components small and focused. One component per file is preferred.
-- **Validation**: Validate all inputs at the API boundary (Pydantic).
-- **Testing**: Write unit tests for critical utility functions in `backend/tests/`.
+- 401 仅用于 Token 无效或过期；前端收到 401 会自动登出并清理缓存。
+- 403 用于已登录但权限不足；不得用 401 表示普通权限不足。
 
-## 5. 前后端联动规范
+## 前后端联动
 
-- 后端改了模型或接口后，必须重新生成前端客户端：`cd frontend && npm run generate-client`（需要 backend 容器在运行，脚本会自动导出最新 OpenAPI 规范）。CI 会重新生成并 diff `src/client/`，忘记生成会在部署前被拦下
-- 前端不允许手写 API 请求 URL 字符串，统一用 `client/` 目录下的生成代码
-- 数据库模型变更后必须生成 Alembic 迁移文件，不允许直接改数据库
+- 修改 API 请求/响应契约后，运行 `cd frontend && npm run generate-client`。
+- 前端不得手写 API URL，也不得手动修改 `frontend/src/client/` 中的生成文件。
+- 修改数据库模型或字段后必须生成并检查 Alembic 迁移，不得直接改数据库。
+- CI 会校验 `frontend/src/client/` 与后端 OpenAPI 是否一致。
+- 后端测试使用独立测试库 `app_test`，禁止连接开发库或生产库。
 
-## 6. Forbidden Patterns
+## 部署规则
 
-- No `print()` in production code — use `logging`.
-- No circular imports — structure modules to avoid dependency cycles.
-- No direct DOM manipulation in React — use refs if absolutely necessary.
-- No magic numbers — use named constants.
-- No `any` in TypeScript.
+- `compose.yml` 用于生产，`compose.override.yml` 用于本地开发。
+- 不提交 `.env`、Token、密码、私钥或其他密钥。
+- 生产 `.env` 由 GitHub Secrets 生成，GitHub Secrets 是生产配置的唯一来源。
+- `master` 只有通过 CI（lint、测试、构建和客户端一致性）后才能部署。
+- 正式面向公网的项目必须使用 HTTPS；内网工具可使用模板默认的 HTTP 方案。
+- 完整的 Secrets、HTTPS、备份和回滚流程见 [docs/deployment.md](docs/deployment.md)。
+
+## 禁止模式
+
+- 禁止循环导入。
+- 禁止 magic numbers，使用命名常量。
+- 禁止为只改业务逻辑的需求创建无意义迁移。

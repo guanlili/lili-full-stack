@@ -52,6 +52,8 @@ jobs:
             echo "   新增/删除配置项时必须两边同步，否则该变量在生产上是空值（静默失效）。"
             exit 1
           fi
+      - name: 模板完整性检查
+        run: bash scripts/check-template.sh
       - name: 部署配置回归检查
         run: python3 scripts/test_deploy.py
       - uses: astral-sh/setup-uv@v7
@@ -84,7 +86,7 @@ jobs:
         run: npm ci
       - name: Biome 检查
         working-directory: frontend
-        run: npx biome ci .
+        run: npm run lint
       - name: 类型检查 + 构建
         working-directory: frontend
         run: npm run build

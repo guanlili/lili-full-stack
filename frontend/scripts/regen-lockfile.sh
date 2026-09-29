@@ -13,7 +13,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 # 匿名卷挂在 /w/node_modules 上，遮住宿主机的 node_modules，保证纯净解析
-docker run --rm -v "$PWD":/w -v /w/node_modules -w /w node:20-slim \
+docker run --rm -v "$PWD":/w -v /w/node_modules -w /w node:24-slim \
   npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
 echo "✅ package-lock.json 已重新生成，建议跟着跑一次："

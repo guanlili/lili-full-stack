@@ -112,12 +112,12 @@ ${SLUG_WARNING}
    本地管理员账号：${FIRST_SUPERUSER} / ${ADMIN_PASSWORD}（也记录在 .env）
 
 📋 剩余手动待办：
-   1. CLAUDE.md   —— 写入业务背景、数据模型、特殊约定（AI 开发的核心上下文）
-   2. README.md   —— 改为项目自己的说明
+   1. PROJECT_CONTEXT.md —— 填写业务背景、角色权限、数据模型、特殊约定
+   2. README.md          —— 改为项目自己的说明
    3. favicon     —— 替换 frontend/public/assets/images/favicon.png
    4. 首次启动    —— docker compose up --build
-   5. 部署前      —— 按 README 配置 GitHub Secrets（SECRET_KEY 另生成新值，勿复用本地）
-   6. 交付前      —— 删除 Items 示例代码（清单见 README「第四步」）
+   5. 部署前      —— 按 docs/deployment.md 配置 GitHub Secrets（SECRET_KEY 另生成新值，勿复用本地）
+   6. 交付前      —— 确认没有临时调试代码和测试数据
    7. 注册方式    —— 生产默认关闭自助注册（Secret USERS_OPEN_REGISTRATION 控制）；
                      "管理员建账号"模式的项目请一并删除注册页（见 README「第四步」）
 DONE
