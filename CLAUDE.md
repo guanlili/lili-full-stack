@@ -1,6 +1,12 @@
-# CLAUDE.md — 项目规范
+# CLAUDE.md — 模板开发规范
 
-> 这是 lili-full-stack 模板项目。每个基于本模板的新项目都应更新本文件，写入该项目的业务背景和数据模型。
+> 本文件维护模板级的项目结构和开发流程。客户项目的业务背景、数据模型、角色权限、第三方服务和特殊约定请写入 `PROJECT_CONTEXT.md`，不要直接把客户信息固化到本文件。
+
+## 项目上下文
+
+开始业务开发前，先阅读根目录的 `PROJECT_CONTEXT.md`（如果存在）。其中的内容只描述当前客户项目，不应反过来改变模板级的安全、权限和数据隔离要求。
+
+新项目初始化时，优先填写 `PROJECT_CONTEXT.md`；只有项目的技术流程本身发生变化时，才修改本文件。
 
 ## 项目结构
 
@@ -35,28 +41,56 @@ docker compose down         # 停止
 
 查看数据库：`docker compose exec db psql -U postgres -d app`
 
-运行后端测试（需要数据库在运行；测试自动创建并使用**独立测试库** `app_test`，不碰开发库 `app`）：
+运行后端测试（需要数据库在运行；测试自动创建并使用独立测试库 `app_test`，不碰开发库 `app`）：
 
 ```bash
 cd backend
-uv run bash scripts/tests-start.sh   # conftest 自动创建 app_test 并在其中建表、清库
+uv run bash scripts/tests-start.sh
 ```
 
-测试库指向应用库时（`POSTGRES_DB_TEST` 与 `POSTGRES_DB` 相同）会在任何建表/删数据操作之前直接拒绝运行。
+测试库指向应用库时（`POSTGRES_DB_TEST` 与 `POSTGRES_DB` 相同），测试会在任何建表或删数据操作之前直接拒绝运行。
 
 ## 开发新功能的标准流程
 
-> 本节是流程的唯一权威版本（README 只留概览指向这里）。
+根据变更类型执行必要步骤，不要为无关变更创建空迁移：
 
-1. **后端**：在 `models.py` 加数据模型 → 在 `crud.py` 加增删改查 → 在 `api/routes/` 加新路由文件 → 在 `api/main.py` 注册路由
-2. **数据库迁移**：`docker compose exec backend alembic revision --autogenerate -m "add xxx"` → `alembic upgrade head`
-3. **前端 API 客户端**：后端改完后重新生成 → `cd frontend && npm run generate-client`（脚本会从运行中的 backend 容器导出最新 OpenAPI 规范再生成）
-4. **前端页面**：在 `routes/_layout/` 加新页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的 `baseItems` 里加导航链接（Admin 入口已按 `is_superuser` 条件展示，可参考）
+1. **数据库变化**：修改 `models.py`，补充 CRUD、路由和测试。
+2. **数据库迁移**：运行 `docker compose exec backend alembic revision --autogenerate -m "add xxx"`，检查迁移内容后再 `alembic upgrade head`。
+3. **API 契约变化**：后端接口稳定后运行 `cd frontend && npm run generate-client`。
+4. **前端页面**：在 `routes/_layout/` 添加页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的 `baseItems` 中按需添加导航链接。
+5. **仅业务逻辑变化**：补充或更新后端 API/CRUD 测试；不需要生成迁移时不要生成迁移。
+
+后端改动模型或接口后，必须确认前端生成客户端和相关测试已同步。生成文件不得手动编辑。
+
+## 验证与交付
+
+后端：
+
+```bash
+cd backend
+uv run bash scripts/lint.sh
+uv run bash scripts/tests-start.sh
+```
+
+前端：
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
+
+交付前还要检查：
+
+- 数据库迁移只包含本次需求的变化。
+- `frontend/src/client/` 与后端 OpenAPI 契约一致。
+- 401/403 语义、角色权限和未登录行为有对应测试或手工验证。
+- Items 示例和临时调试代码已按项目需要删除或替换。
 
 ## 示例代码说明
 
-`backend/app/api/routes/items.py` 和 `frontend/src/routes/_layout/items.tsx` 是 CRUD 功能的完整示例，展示了标准的开发模式。开始新功能时可以参考，最终交付前删除。
+`backend/app/api/routes/items.py` 和 `frontend/src/routes/_layout/items.tsx` 是模板自带的 CRUD 示例，只用于展示开发模式。新项目应在初始化阶段决定保留、改造或删除它们，并同步清理迁移、导航和测试。
 
 ## 技术规范
 
-详见 `AI_RULES.md`。
+详见 `AI_RULES.md`。客户项目的业务约定详见 `PROJECT_CONTEXT.md`。

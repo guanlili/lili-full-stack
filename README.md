@@ -2,7 +2,7 @@
 
 guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) 精简定制，面向 AI 驱动的外包项目快速交付。
 
-> **AI 助手请注意**：本仓库是模板仓库，不是具体项目。具体项目的业务背景请看该项目自己的 `CLAUDE.md`。
+> **AI 助手请注意**：本仓库是模板仓库，不是具体项目。模板级开发流程见 `CLAUDE.md`，具体项目的业务背景、角色权限和数据模型见 `PROJECT_CONTEXT.md`。
 
 ---
 
@@ -46,8 +46,9 @@ bash scripts/init-project.sh "项目显示名"
 
 ### 第三步：更新项目文档
 
-- `CLAUDE.md` — 写入该项目的业务背景、数据模型、特殊约定（AI 开发时会读这个）
-- `AI_RULES.md` — 追加项目特定的技术规范（如有）
+- `PROJECT_CONTEXT.md` — 写入该项目的业务背景、角色权限、数据模型和特殊约定（AI 开发前必须填写）
+- `CLAUDE.md` — 只有项目开发流程发生变化时才修改，模板级流程不要覆盖
+- `AI_RULES.md` — 只有项目确实有额外的编码、安全或部署规范时才追加
 - `README.md` — 改为项目自己的说明
 
 ### 第四步：删除示例代码
@@ -111,7 +112,7 @@ docker compose down
 
 ## 新功能开发流程
 
-**权威版本在 [CLAUDE.md](CLAUDE.md)**（Claude Code 每次会话自动加载，人和 AI 都照它执行），此处只留概览，避免两份文档漂移：
+**开发流程权威版本在 [CLAUDE.md](CLAUDE.md)**，项目业务上下文权威版本在 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)。此处只留概览，避免多份文档漂移：
 
 > 后端加模型/CRUD/路由 → Alembic 迁移 → `cd frontend && npm run generate-client` 同步客户端 → 前端加页面。
 
@@ -283,7 +284,7 @@ ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> && docke
 
 ### 从模板同步改进到现有项目
 
-模板和具体项目是独立仓库，没有 git 关联。需要手动同步时，把改进的文件（`CLAUDE.md`、`AI_RULES.md`、`compose.yml`、`.claude/commands/`）复制过去即可。
+模板和具体项目是独立仓库，没有 git 关联。需要手动同步时，把模板级文件（`AGENTS.md`、`CLAUDE.md`、`AI_RULES.md`、`compose.yml`、`.claude/commands/`）复制过去；不要覆盖客户项目自己的 `PROJECT_CONTEXT.md`。
 
 ---
 
@@ -297,8 +298,10 @@ lili-full-stack/
 │   └── init-project.sh    # 新项目一键初始化（改名 + 密钥随机化）
 ├── .env.example           # 环境变量模板（复制为 .env 使用）
 ├── .env                   # 实际配置（gitignore 忽略，永不提交；生产由 Secrets 生成）
+├── AGENTS.md              # AI 工具通用入口与文档优先级
 ├── AI_RULES.md            # AI 开发规范（技术约定）
-├── CLAUDE.md              # 项目上下文（Claude Code 启动时自动读取）
+├── CLAUDE.md              # 模板级项目结构与开发流程
+├── PROJECT_CONTEXT.md     # 当前客户项目上下文（复制模板后填写）
 ├── compose.yml            # 生产 Docker Compose
 ├── compose.override.yml   # 本地开发覆盖配置
 ├── backend/

@@ -112,8 +112,8 @@ ${SLUG_WARNING}
    本地管理员账号：${FIRST_SUPERUSER} / ${ADMIN_PASSWORD}（也记录在 .env）
 
 📋 剩余手动待办：
-   1. CLAUDE.md   —— 写入业务背景、数据模型、特殊约定（AI 开发的核心上下文）
-   2. README.md   —— 改为项目自己的说明
+   1. PROJECT_CONTEXT.md —— 填写业务背景、角色权限、数据模型、特殊约定
+   2. README.md          —— 改为项目自己的说明
    3. favicon     —— 替换 frontend/public/assets/images/favicon.png
    4. 首次启动    —— docker compose up --build
    5. 部署前      —— 按 README 配置 GitHub Secrets（SECRET_KEY 另生成新值，勿复用本地）
