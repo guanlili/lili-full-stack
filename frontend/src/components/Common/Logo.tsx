@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router"
+import { APP_NAME } from "@/config"
 import { cn } from "@/lib/utils"
 
 interface LogoProps {
@@ -13,12 +14,27 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const icon = (
-    <span className={cn("font-bold text-lg leading-none", className)}>
-      {variant === "icon" ? "A" : "My App"}
+  const mark = (
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm">
+      {APP_NAME.trim().charAt(0).toUpperCase() || "A"}
+    </span>
+  )
+  const content = (
+    <span className={cn("inline-flex items-center gap-3", className)}>
+      {mark}
+      {variant !== "icon" && (
+        <span
+          className={cn(
+            "font-semibold tracking-tight",
+            variant === "responsive" && "group-data-[collapsible=icon]:hidden",
+          )}
+        >
+          {APP_NAME}
+        </span>
+      )}
     </span>
   )
 
-  if (!asLink) return icon
-  return <Link to="/">{icon}</Link>
+  if (!asLink) return content
+  return <Link to="/">{content}</Link>
 }

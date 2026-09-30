@@ -12,13 +12,13 @@ import useAuth from "@/hooks/useAuth"
 import { Main, type NavItem } from "./Main"
 import { User } from "./User"
 
-const baseItems: NavItem[] = [{ icon: Home, title: "Dashboard", path: "/" }]
+const baseItems: NavItem[] = [{ icon: Home, title: "工作台", path: "/" }]
 
 export function AppSidebar() {
   const { user: currentUser } = useAuth()
 
   const items = currentUser?.is_superuser
-    ? [...baseItems, { icon: Users, title: "Admin", path: "/admin" }]
+    ? [...baseItems, { icon: Users, title: "用户管理", path: "/admin" }]
     : baseItems
 
   return (

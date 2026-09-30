@@ -23,11 +23,11 @@ import { APP_NAME } from "@/config"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
 const formSchema = z.object({
-  username: z.email(),
+  username: z.email({ message: "请输入有效的邮箱地址" }),
   password: z
     .string()
-    .min(1, { message: "Password is required" })
-    .min(8, { message: "Password must be at least 8 characters" }),
+    .min(1, { message: "请输入密码" })
+    .min(8, { message: "密码至少需要 8 个字符" }),
 }) satisfies z.ZodType<AccessToken>
 
 type FormData = z.infer<typeof formSchema>
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       {
-        title: `Log In - ${APP_NAME}`,
+        title: `登录 - ${APP_NAME}`,
       },
     ],
   }),
@@ -74,8 +74,14 @@ function Login() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-primary">欢迎回来</p>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              登录你的账号
+            </h1>
+            <p className="text-sm leading-6 text-muted-foreground">
+              输入账号信息，继续使用 {APP_NAME}。
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -84,12 +90,14 @@ function Login() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>邮箱</FormLabel>
                   <FormControl>
                     <Input
                       data-testid="email-input"
-                      placeholder="user@example.com"
+                      placeholder="请输入邮箱"
                       type="email"
+                      autoComplete="email"
+                      className="h-11"
                       {...field}
                     />
                   </FormControl>
@@ -104,18 +112,20 @@ function Login() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>密码</FormLabel>
                     <RouterLink
                       to="/recover-password"
                       className="ml-auto text-sm underline-offset-4 hover:underline"
                     >
-                      Forgot your password?
+                      忘记密码？
                     </RouterLink>
                   </div>
                   <FormControl>
                     <PasswordInput
                       data-testid="password-input"
-                      placeholder="Password"
+                      placeholder="请输入密码"
+                      autoComplete="current-password"
+                      className="h-11"
                       {...field}
                     />
                   </FormControl>
@@ -124,15 +134,22 @@ function Login() {
               )}
             />
 
-            <LoadingButton type="submit" loading={loginMutation.isPending}>
-              Log In
+            <LoadingButton
+              type="submit"
+              className="h-11 w-full"
+              loading={loginMutation.isPending}
+            >
+              登录
             </LoadingButton>
           </div>
 
-          <div className="text-center text-sm">
-            Don't have an account yet?{" "}
-            <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
+          <div className="border-t pt-5 text-center text-sm text-muted-foreground">
+            还没有账号？{" "}
+            <RouterLink
+              to="/signup"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              立即注册
             </RouterLink>
           </div>
         </form>
