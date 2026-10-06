@@ -43,6 +43,9 @@ const useAuth = () => {
       formData: data,
     })
     localStorage.setItem("access_token", response.access_token)
+    if (response.refresh_token) {
+      localStorage.setItem("refresh_token", response.refresh_token)
+    }
   }
 
   const loginMutation = useMutation({
@@ -55,6 +58,7 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
     // 取消进行中的请求并清空全部查询缓存：切换账号时绝不能复用
     // 上一账号的身份、列表与详情缓存（包括请求还在途的慢网络场景）
     queryClient.cancelQueries()
@@ -62,10 +66,16 @@ const useAuth = () => {
     navigate({ to: "/login" })
   }
 
+  const logoutAll = async () => {
+    await LoginService.logoutAll()
+    logout()
+  }
+
   return {
     signUpMutation,
     loginMutation,
     logout,
+    logoutAll,
     user,
   }
 }

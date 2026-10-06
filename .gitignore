@@ -15,4 +15,6 @@ node_modules/
 # 部署临时配置（失败时也不得提交）
 .env.new
 .env.new.*
+.deploy-target
+.deploy-target.new
 __pycache__/

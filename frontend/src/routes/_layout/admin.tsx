@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
+import PlatformTools from "@/components/Admin/PlatformTools"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import { APP_NAME } from "@/config"
@@ -66,6 +67,7 @@ function Admin() {
         <AddUser />
       </div>
       <UsersTable />
+      <PlatformTools />
     </div>
   )
 }

@@ -41,6 +41,8 @@ if git grep -n -E 'backend/app/api/routes/items\.py|frontend/src/routes/_layout/
 fi
 
 COMPOSE_ENV_FILE=.env.example docker compose --env-file .env.example -f compose.yml config --quiet
-git diff --check
+# OpenAPI 生成器会在 src/client/ 的空行保留缩进空格；该目录由生成器管理，
+# 其契约一致性由 CI 的 openapi-ts 漂移检查负责。手写源码仍全部检查。
+git diff --check -- ':!frontend/src/client/'
 
 echo "✅ 模板完整性检查通过"

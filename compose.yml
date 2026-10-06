@@ -65,6 +65,8 @@ services:
         restart: true
       prestart:
         condition: service_completed_successfully
+    volumes:
+      - app-uploads:/app/uploads
     healthcheck:
       # 就绪检查（含数据库可用性）：DB 挂掉时容器标记 unhealthy，
       # unhealthy 不会触发自动重启；数据库恢复后后续探测恢复 healthy。
@@ -91,3 +93,4 @@ services:
 
 volumes:
   app-db-data:
+  app-uploads:

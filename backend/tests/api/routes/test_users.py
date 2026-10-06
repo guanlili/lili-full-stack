@@ -246,13 +246,22 @@ def test_update_password_me(
     assert verified
 
     # Revert to the old password to keep consistency in test
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={
+            "username": settings.FIRST_SUPERUSER,
+            "password": new_password,
+        },
+    )
+    assert login.status_code == 200
+    new_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     old_data = {
         "current_password": new_password,
         "new_password": settings.FIRST_SUPERUSER_PASSWORD,
     }
     r = client.patch(
         f"{settings.API_V1_STR}/users/me/password",
-        headers=superuser_token_headers,
+        headers=new_headers,
         json=old_data,
     )
     db.refresh(user_db)

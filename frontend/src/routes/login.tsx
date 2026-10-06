@@ -4,10 +4,13 @@ import {
   Link as RouterLink,
   redirect,
 } from "@tanstack/react-router"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import type { Body_login_login_access_token as AccessToken } from "@/client"
+import { LoginService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
@@ -52,6 +55,7 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const [demoCredentialsLoading, setDemoCredentialsLoading] = useState(false)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -65,6 +69,17 @@ function Login() {
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
     loginMutation.mutate(data)
+  }
+
+  const fillDemoCredentials = async () => {
+    setDemoCredentialsLoading(true)
+    try {
+      const credentials = await LoginService.demoCredentials()
+      form.setValue("username", credentials.username, { shouldValidate: true })
+      form.setValue("password", credentials.password, { shouldValidate: true })
+    } finally {
+      setDemoCredentialsLoading(false)
+    }
   }
 
   return (
@@ -85,6 +100,21 @@ function Login() {
           </div>
 
           <div className="grid gap-4">
+            {import.meta.env.DEV && (
+              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                <p>本地开发演示账号</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 w-full"
+                  disabled={demoCredentialsLoading}
+                  onClick={fillDemoCredentials}
+                >
+                  {demoCredentialsLoading ? "读取中…" : "填入演示账号"}
+                </Button>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="username"

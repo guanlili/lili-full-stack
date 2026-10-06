@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "@tanstack/react-router"
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
+import { ChevronsUpDown, KeyRound, LogOut, Settings } from "lucide-react"
 
 import type { UserPublic } from "@/client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -42,7 +42,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
 }
 
 export function User({ user }: { user: UserPublic | null | undefined }) {
-  const { logout } = useAuth()
+  const { logout, logoutAll } = useAuth()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!user) return null
@@ -89,6 +89,10 @@ export function User({ user }: { user: UserPublic | null | undefined }) {
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               退出登录
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void logoutAll()}>
+              <KeyRound />
+              退出所有设备
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

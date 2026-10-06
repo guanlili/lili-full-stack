@@ -34,6 +34,32 @@ def test_get_access_token_incorrect_password(client: TestClient) -> None:
     assert r.status_code == 400
 
 
+def test_refresh_token_rotation(client: TestClient) -> None:
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={
+            "username": settings.FIRST_SUPERUSER,
+            "password": settings.FIRST_SUPERUSER_PASSWORD,
+        },
+    )
+    assert login.status_code == 200
+    first_refresh_token = login.json()["refresh_token"]
+
+    refreshed = client.post(
+        f"{settings.API_V1_STR}/login/refresh",
+        json={"refresh_token": first_refresh_token},
+    )
+    assert refreshed.status_code == 200
+    second_refresh_token = refreshed.json()["refresh_token"]
+    assert second_refresh_token != first_refresh_token
+
+    reused = client.post(
+        f"{settings.API_V1_STR}/login/refresh",
+        json={"refresh_token": first_refresh_token},
+    )
+    assert reused.status_code == 401
+
+
 def test_use_access_token(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
@@ -44,6 +70,21 @@ def test_use_access_token(
     result = r.json()
     assert r.status_code == 200
     assert "email" in result
+
+
+def test_logout_all_revokes_current_token(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    response = client.post(
+        f"{settings.API_V1_STR}/login/logout-all",
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    revoked = client.post(
+        f"{settings.API_V1_STR}/login/test-token",
+        headers=superuser_token_headers,
+    )
+    assert revoked.status_code == 401
 
 
 def test_recovery_password(

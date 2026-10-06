@@ -1,8 +1,9 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime
+from sqlalchemy import JSON, Column, DateTime
 from sqlmodel import Field, SQLModel
 
 
@@ -52,6 +53,7 @@ class UpdatePassword(SQLModel):
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
+    token_version: int = 0
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
@@ -69,6 +71,11 @@ class UsersPublic(SQLModel):
     count: int
 
 
+class UserImportResult(SQLModel):
+    created_count: int
+    errors: list[str]
+
+
 # Shared properties
 # Generic message
 class Message(SQLModel):
@@ -79,13 +86,215 @@ class Message(SQLModel):
 class Token(SQLModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
+
+
+class RefreshTokenRequest(SQLModel):
+    refresh_token: str = Field(min_length=32, max_length=256)
 
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
     sub: str | None = None
+    ver: int | None = None
 
 
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class RoleBase(SQLModel):
+    name: str = Field(min_length=1, max_length=100, index=True)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class Role(RoleBase, table=True):
+    __tablename__ = "role"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RolePublic(RoleBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class RolesPublic(SQLModel):
+    data: list[RolePublic]
+    count: int
+
+
+class PermissionBase(SQLModel):
+    codename: str = Field(min_length=1, max_length=100, index=True)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class Permission(PermissionBase, table=True):
+    __tablename__ = "permission"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+
+class PermissionPublic(PermissionBase):
+    id: uuid.UUID
+
+
+class RolePermission(SQLModel, table=True):
+    __tablename__ = "role_permission"
+
+    role_id: uuid.UUID = Field(foreign_key="role.id", primary_key=True)
+    permission_id: uuid.UUID = Field(foreign_key="permission.id", primary_key=True)
+
+
+class UserRole(SQLModel, table=True):
+    __tablename__ = "user_role"
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", primary_key=True)
+    role_id: uuid.UUID = Field(foreign_key="role.id", primary_key=True)
+
+
+class UserRolesUpdate(SQLModel):
+    role_ids: list[uuid.UUID]
+
+
+class UserRolesPublic(SQLModel):
+    data: list[RolePublic]
+
+
+class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_log"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Intentionally not a foreign key: audit history must survive user deletion.
+    actor_user_id: uuid.UUID | None = Field(default=None, index=True)
+    action: str = Field(max_length=100, index=True)
+    resource_type: str = Field(max_length=100, index=True)
+    resource_id: str | None = Field(default=None, max_length=100, index=True)
+    details: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class AuditLogPublic(SQLModel):
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None = None
+    action: str
+    resource_type: str
+    resource_id: str | None = None
+    details: dict[str, Any] | None = None
+    created_at: datetime | None = None
+
+
+class AuditLogsPublic(SQLModel):
+    data: list[AuditLogPublic]
+    count: int
+
+
+class FileAsset(SQLModel, table=True):
+    __tablename__ = "file_asset"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    original_name: str = Field(max_length=255)
+    stored_name: str = Field(max_length=255, unique=True, index=True)
+    content_type: str | None = Field(default=None, max_length=255)
+    size: int
+    owner_user_id: uuid.UUID | None = Field(default=None, index=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class FileAssetPublic(SQLModel):
+    id: uuid.UUID
+    original_name: str
+    content_type: str | None = None
+    size: int
+    owner_user_id: uuid.UUID | None = None
+    created_at: datetime | None = None
+
+
+class SystemSetting(SQLModel, table=True):
+    __tablename__ = "system_setting"
+
+    key: str = Field(primary_key=True, max_length=100)
+    value: str = Field(max_length=4000)
+    description: str | None = Field(default=None, max_length=255)
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class SystemSettingUpdate(SQLModel):
+    value: str = Field(max_length=4000)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class SystemSettingPublic(SQLModel):
+    key: str
+    value: str
+    description: str | None = None
+    updated_at: datetime | None = None
+
+
+class RefreshToken(SQLModel, table=True):
+    __tablename__ = "refresh_token"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    token_hash: str = Field(max_length=64, unique=True, index=True)
+    user_id: uuid.UUID = Field(index=True)
+    expires_at: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
+    revoked_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class Job(SQLModel, table=True):
+    __tablename__ = "job"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    task_type: str = Field(max_length=100, index=True)
+    status: str = Field(default="queued", max_length=30, index=True)
+    owner_user_id: uuid.UUID | None = Field(default=None, index=True)
+    result: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    error: str | None = Field(default=None, max_length=1000)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    finished_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class JobPublic(SQLModel):
+    id: uuid.UUID
+    task_type: str
+    status: str
+    owner_user_id: uuid.UUID | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: datetime | None = None
+    finished_at: datetime | None = None
