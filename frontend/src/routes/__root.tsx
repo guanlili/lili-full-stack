@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router"
 import { lazy, Suspense } from "react"
 import ErrorComponent from "@/components/Common/ErrorComponent"
+import LoadingScreen from "@/components/Common/LoadingScreen"
 import NotFound from "@/components/Common/NotFound"
 
 const TanStackRouterDevtools = import.meta.env.PROD
@@ -30,6 +31,7 @@ export const Route = createRootRoute({
       </Suspense>
     </>
   ),
+  pendingComponent: () => <LoadingScreen />,
   notFoundComponent: () => <NotFound />,
   errorComponent: () => <ErrorComponent />,
 })

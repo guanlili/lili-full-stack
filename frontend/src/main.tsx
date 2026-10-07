@@ -7,6 +7,7 @@ import {
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
+import { toast } from "sonner"
 import { ApiError, OpenAPI } from "./client"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
@@ -27,6 +28,13 @@ const handleApiError = (error: Error) => {
     // 天然清空全部缓存与在途请求，与主动退出（useAuth.logout 的
     // cancelQueries + clear）等效
     window.location.href = "/login"
+    return
+  }
+
+  if (error instanceof ApiError && error.status === 403) {
+    toast.error("没有权限执行此操作")
+  } else {
+    toast.error("请求失败，请稍后重试")
   }
 }
 const queryClient = new QueryClient({
@@ -34,8 +42,19 @@ const queryClient = new QueryClient({
     onError: handleApiError,
   }),
   mutationCache: new MutationCache({
-    onError: handleApiError,
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        handleApiError(error)
+      }
+    },
   }),
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
 })
 
 const router = createRouter({ routeTree })
@@ -47,7 +66,7 @@ declare module "@tanstack/react-router" {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <Toaster richColors closeButton />
