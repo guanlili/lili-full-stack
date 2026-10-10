@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { History, Settings2, ShieldCheck, Users } from "lucide-react"
+import { History, ShieldCheck, Users } from "lucide-react"
 import { UsersService } from "@/client"
 import PlatformTools from "@/components/Admin/PlatformTools"
 import UsersPanel from "@/components/Admin/UsersPanel"
@@ -43,10 +43,6 @@ function Admin() {
             <History className="hidden sm:block" />
             操作日志
           </TabsTrigger>
-          <TabsTrigger value="settings" className="px-2 py-2 sm:px-4">
-            <Settings2 className="hidden sm:block" />
-            系统配置
-          </TabsTrigger>
         </TabsList>
         <TabsContent
           value="users"
@@ -60,9 +56,6 @@ function Admin() {
         </TabsContent>
         <TabsContent value="audit">
           <PlatformTools section="audit" />
-        </TabsContent>
-        <TabsContent value="settings">
-          <PlatformTools section="settings" />
         </TabsContent>
       </Tabs>
     </div>

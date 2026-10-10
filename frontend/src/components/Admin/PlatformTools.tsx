@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
-import { PlatformService, SettingsService } from "@/client"
+import { PlatformService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -17,14 +17,12 @@ import { handleError } from "@/utils"
 export default function PlatformTools({
   section,
 }: {
-  section: "roles" | "audit" | "settings"
+  section: "roles" | "audit"
 }) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const [roleName, setRoleName] = useState("")
   const [roleDescription, setRoleDescription] = useState("")
-  const [settingKey, setSettingKey] = useState("")
-  const [settingValue, setSettingValue] = useState("")
 
   const rolesQuery = useQuery({
     enabled: section === "roles",
@@ -36,11 +34,6 @@ export default function PlatformTools({
     queryKey: ["audit-logs"],
     queryFn: () => PlatformService.readAuditLogs({ limit: 20 }),
   })
-  const settingsQuery = useQuery({
-    enabled: section === "settings",
-    queryKey: ["system-settings"],
-    queryFn: () => SettingsService.readSettings(),
-  })
   const createRoleMutation = useMutation({
     mutationFn: () =>
       PlatformService.createRole({
@@ -51,21 +44,6 @@ export default function PlatformTools({
       setRoleDescription("")
       showSuccessToast("角色创建成功")
       queryClient.invalidateQueries({ queryKey: ["platform-roles"] })
-    },
-    onError: handleError.bind(showErrorToast),
-  })
-
-  const updateSettingMutation = useMutation({
-    mutationFn: () =>
-      SettingsService.updateSetting({
-        key: settingKey,
-        requestBody: { value: settingValue },
-      }),
-    onSuccess: () => {
-      setSettingKey("")
-      setSettingValue("")
-      showSuccessToast("系统配置已保存")
-      queryClient.invalidateQueries({ queryKey: ["system-settings"] })
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -128,70 +106,6 @@ export default function PlatformTools({
                   <span>{role.name}</span>
                   <span className="text-muted-foreground">
                     {role.description || "未填写说明"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {section === "settings" && (
-        <Card className="shadow-none">
-          <CardHeader>
-            <CardTitle>系统配置</CardTitle>
-            <CardDescription>
-              保存项目级开关和展示配置，不存放密码或密钥。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Input
-                aria-label="配置键"
-                placeholder="配置键，如 site.title"
-                value={settingKey}
-                onChange={(event) => setSettingKey(event.target.value)}
-              />
-              <Input
-                aria-label="配置值"
-                placeholder="配置值"
-                value={settingValue}
-                onChange={(event) => setSettingValue(event.target.value)}
-              />
-            </div>
-            <Button
-              disabled={!settingKey.trim() || updateSettingMutation.isPending}
-              onClick={() => updateSettingMutation.mutate()}
-            >
-              保存配置
-            </Button>
-            {settingsQuery.isPending && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                正在加载…
-              </p>
-            )}
-            {settingsQuery.isError && (
-              <div role="alert" className="py-6 text-center">
-                <p className="text-sm">加载失败，请重试。</p>
-                <Button variant="link" onClick={() => settingsQuery.refetch()}>
-                  重新加载
-                </Button>
-              </div>
-            )}
-            {settingsQuery.data && settingsQuery.data.length === 0 && (
-              <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                暂无记录
-              </p>
-            )}
-            <div className="space-y-2 text-sm">
-              {settingsQuery.data?.map((setting) => (
-                <div
-                  className="flex justify-between rounded border p-2"
-                  key={setting.key}
-                >
-                  <span>{setting.key}</span>
-                  <span className="text-muted-foreground truncate max-w-[60%]">
-                    {setting.value}
                   </span>
                 </div>
               ))}
