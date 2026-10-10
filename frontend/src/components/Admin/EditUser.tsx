@@ -105,12 +105,14 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
         <Pencil />
         编辑用户
       </DropdownMenuItem>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <DialogHeader>
               <DialogTitle>编辑用户</DialogTitle>
-              <DialogDescription>修改以下用户信息。</DialogDescription>
+              <DialogDescription>
+                修改账号信息与权限。密码留空时保留原密码。
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <FormField
@@ -156,7 +158,8 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                     <FormLabel>设置密码</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="请输入新密码"
+                        autoComplete="new-password"
+                        placeholder="不修改请留空"
                         type="password"
                         {...field}
                       />

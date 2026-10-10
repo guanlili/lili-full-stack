@@ -65,7 +65,7 @@ const AddUser = () => {
       password: "",
       confirm_password: "",
       is_superuser: false,
-      is_active: false,
+      is_active: true,
     },
   })
 
@@ -91,15 +91,17 @@ const AddUser = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="my-4">
+        <Button>
           <Plus className="mr-2" />
           新增用户
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>新增用户</DialogTitle>
-          <DialogDescription>填写以下信息，为系统新增用户。</DialogDescription>
+          <DialogDescription>
+            设置登录信息与账号类型。创建后可随时编辑或停用。
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -139,6 +141,7 @@ const AddUser = () => {
                 )}
               />
 
+              <div className="border-t pt-4 text-sm font-medium">登录凭证</div>
               <FormField
                 control={form.control}
                 name="password"
@@ -149,7 +152,8 @@ const AddUser = () => {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="请输入密码"
+                        autoComplete="new-password"
+                        placeholder="至少 8 个字符"
                         type="password"
                         {...field}
                         required
@@ -170,6 +174,7 @@ const AddUser = () => {
                     </FormLabel>
                     <FormControl>
                       <Input
+                        autoComplete="new-password"
                         placeholder="请再次输入密码"
                         type="password"
                         {...field}
@@ -181,6 +186,7 @@ const AddUser = () => {
                 )}
               />
 
+              <div className="border-t pt-4 text-sm font-medium">访问权限</div>
               <FormField
                 control={form.control}
                 name="is_superuser"
@@ -223,7 +229,7 @@ const AddUser = () => {
                 </Button>
               </DialogClose>
               <LoadingButton type="submit" loading={mutation.isPending}>
-                保存
+                创建账号
               </LoadingButton>
             </DialogFooter>
           </form>

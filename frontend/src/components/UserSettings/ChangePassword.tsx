@@ -5,6 +5,13 @@ import { z } from "zod"
 
 import { type UpdatePassword, UsersService } from "@/client"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   Form,
   FormControl,
   FormField,
@@ -64,80 +71,93 @@ const ChangePassword = () => {
   }
 
   return (
-    <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">修改密码</h3>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          <FormField
-            control={form.control}
-            name="current_password"
-            render={({ field, fieldState }) => (
-              <FormItem>
-                <FormLabel>当前密码</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    data-testid="current-password-input"
-                    placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="new_password"
-            render={({ field, fieldState }) => (
-              <FormItem>
-                <FormLabel>新密码</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    data-testid="new-password-input"
-                    placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="confirm_password"
-            render={({ field, fieldState }) => (
-              <FormItem>
-                <FormLabel>确认密码</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    data-testid="confirm-password-input"
-                    placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <LoadingButton
-            type="submit"
-            loading={mutation.isPending}
-            className="self-start"
+    <Card className="gap-5 shadow-none">
+      <CardHeader className="border-b pb-5">
+        <CardTitle>修改登录密码</CardTitle>
+        <CardDescription>
+          设置至少 8 个字符的新密码，避免与其他网站使用相同密码。
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex max-w-xl flex-col gap-5"
           >
-            修改密码
-          </LoadingButton>
-        </form>
-      </Form>
-    </div>
+            <FormField
+              control={form.control}
+              name="current_password"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>当前密码</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      autoComplete="current-password"
+                      disabled={mutation.isPending}
+                      data-testid="current-password-input"
+                      placeholder="••••••••"
+                      aria-invalid={fieldState.invalid}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="new_password"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>新密码</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      autoComplete="new-password"
+                      disabled={mutation.isPending}
+                      data-testid="new-password-input"
+                      placeholder="••••••••"
+                      aria-invalid={fieldState.invalid}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirm_password"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>确认密码</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      autoComplete="new-password"
+                      disabled={mutation.isPending}
+                      data-testid="confirm-password-input"
+                      placeholder="••••••••"
+                      aria-invalid={fieldState.invalid}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <LoadingButton
+              type="submit"
+              loading={mutation.isPending}
+              className="self-start"
+            >
+              修改密码
+            </LoadingButton>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   )
 }
 

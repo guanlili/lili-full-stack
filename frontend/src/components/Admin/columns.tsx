@@ -16,11 +16,14 @@ export const columns: ColumnDef<UserTableData>[] = [
     cell: ({ row }) => {
       const fullName = row.original.full_name
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 py-2">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+            {(fullName || row.original.email).slice(0, 1).toUpperCase()}
+          </div>
           <span
             className={cn("font-medium", !fullName && "text-muted-foreground")}
           >
-            {fullName || "N/A"}
+            {fullName || "未填写姓名"}
           </span>
           {row.original.isCurrentUser && (
             <Badge variant="outline" className="text-xs">
@@ -40,7 +43,7 @@ export const columns: ColumnDef<UserTableData>[] = [
   },
   {
     accessorKey: "is_superuser",
-    header: "角色",
+    header: "账号类型",
     cell: ({ row }) => (
       <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
         {row.original.is_superuser ? "超级管理员" : "普通用户"}
@@ -59,7 +62,7 @@ export const columns: ColumnDef<UserTableData>[] = [
           )}
         />
         <span className={row.original.is_active ? "" : "text-muted-foreground"}>
-          {row.original.is_active ? "正常" : "未启用"}
+          {row.original.is_active ? "已启用" : "已停用"}
         </span>
       </div>
     ),

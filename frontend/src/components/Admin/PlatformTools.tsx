@@ -12,28 +12,32 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import useCustomToast from "@/hooks/useCustomToast"
-import { useUserExport } from "@/hooks/useUserExport"
 import { handleError } from "@/utils"
 
-export default function PlatformTools() {
+export default function PlatformTools({
+  section,
+}: {
+  section: "roles" | "audit" | "settings"
+}) {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const [roleName, setRoleName] = useState("")
   const [roleDescription, setRoleDescription] = useState("")
   const [settingKey, setSettingKey] = useState("")
   const [settingValue, setSettingValue] = useState("")
-  const { enqueue, jobQuery, download, downloadUrl, downloadRef } =
-    useUserExport()
 
   const rolesQuery = useQuery({
+    enabled: section === "roles",
     queryKey: ["platform-roles"],
     queryFn: () => PlatformService.readRoles({ limit: 100 }),
   })
   const auditQuery = useQuery({
+    enabled: section === "audit",
     queryKey: ["audit-logs"],
     queryFn: () => PlatformService.readAuditLogs({ limit: 20 }),
   })
   const settingsQuery = useQuery({
+    enabled: section === "settings",
     queryKey: ["system-settings"],
     queryFn: () => SettingsService.readSettings(),
   })
@@ -67,173 +71,188 @@ export default function PlatformTools() {
   })
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>角色管理</CardTitle>
-          <CardDescription>
-            为后续业务模块提供可复用的角色基础。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Input
-              placeholder="角色名称"
-              value={roleName}
-              onChange={(event) => setRoleName(event.target.value)}
-            />
-            <Input
-              placeholder="角色说明"
-              value={roleDescription}
-              onChange={(event) => setRoleDescription(event.target.value)}
-            />
-          </div>
-          <Button
-            disabled={!roleName.trim() || createRoleMutation.isPending}
-            onClick={() => createRoleMutation.mutate()}
-          >
-            新建角色
-          </Button>
-          <div className="space-y-2 text-sm">
-            {rolesQuery.data?.data.map((role) => (
-              <div
-                className="flex justify-between rounded border p-2"
-                key={role.id}
-              >
-                <span>{role.name}</span>
-                <span className="text-muted-foreground">
-                  {role.description || "未填写说明"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>系统配置</CardTitle>
-          <CardDescription>
-            保存项目级开关和展示配置，不存放密码或密钥。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Input
-              placeholder="配置键，如 site.title"
-              value={settingKey}
-              onChange={(event) => setSettingKey(event.target.value)}
-            />
-            <Input
-              placeholder="配置值"
-              value={settingValue}
-              onChange={(event) => setSettingValue(event.target.value)}
-            />
-          </div>
-          <Button
-            disabled={!settingKey.trim() || updateSettingMutation.isPending}
-            onClick={() => updateSettingMutation.mutate()}
-          >
-            保存配置
-          </Button>
-          <div className="space-y-2 text-sm">
-            {settingsQuery.data?.map((setting) => (
-              <div
-                className="flex justify-between rounded border p-2"
-                key={setting.key}
-              >
-                <span>{setting.key}</span>
-                <span className="text-muted-foreground truncate max-w-[60%]">
-                  {setting.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardTitle>最近操作</CardTitle>
-              <CardDescription>
-                审计日志用于定位误操作和追踪数据变更。
-              </CardDescription>
+    <div className="space-y-6">
+      {section === "roles" && (
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle>角色管理</CardTitle>
+            <CardDescription>
+              自定义业务角色。账号类型中的超级管理员拥有系统完整权限。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                aria-label="角色名称"
+                placeholder="角色名称，如运营人员"
+                value={roleName}
+                onChange={(event) => setRoleName(event.target.value)}
+              />
+              <Input
+                aria-label="角色说明"
+                placeholder="描述角色的职责"
+                value={roleDescription}
+                onChange={(event) => setRoleDescription(event.target.value)}
+              />
             </div>
             <Button
-              disabled={
-                enqueue.isPending ||
-                jobQuery.isLoading ||
-                jobQuery.data?.status === "queued" ||
-                jobQuery.data?.status === "running"
-              }
-              onClick={() => enqueue.mutate()}
-              variant="outline"
+              disabled={!roleName.trim() || createRoleMutation.isPending}
+              onClick={() => createRoleMutation.mutate()}
             >
-              导出用户 CSV
+              新建角色
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {jobQuery.data && (
-            <div className="mb-4 flex items-center gap-3 text-sm">
-              <span>导出任务状态：{jobQuery.data.status}</span>
-              {jobQuery.data.status === "failed" && (
-                <span role="alert">导出失败，请重新提交。</span>
-              )}
-              {jobQuery.data.status === "completed" &&
-                typeof jobQuery.data.result?.file_id === "string" && (
-                  <Button
-                    variant="outline"
-                    disabled={download.isPending}
-                    onClick={() => {
-                      const fileId = jobQuery.data?.result?.file_id
-                      if (typeof fileId === "string") download.mutate(fileId)
-                    }}
-                  >
-                    {download.isPending ? "准备下载…" : "下载 CSV"}
-                  </Button>
-                )}
-            </div>
-          )}
-          {jobQuery.isError && (
-            <p role="alert" className="mb-4 text-sm">
-              无法查询导出状态。
-              <Button variant="link" onClick={() => jobQuery.refetch()}>
-                重试
-              </Button>
-            </p>
-          )}
-          <a
-            ref={downloadRef}
-            href={downloadUrl ?? undefined}
-            download="users.csv"
-            hidden
-          >
-            下载用户 CSV
-          </a>
-          <div className="space-y-2 text-sm">
-            {auditQuery.data?.data.map((log) => (
-              <div
-                className="grid gap-1 rounded border p-2 sm:grid-cols-[180px_1fr_auto]"
-                key={log.id}
-              >
-                <span>{log.action}</span>
-                <span className="text-muted-foreground">
-                  {log.resource_type}
-                  {log.resource_id ? ` / ${log.resource_id}` : ""}
-                </span>
-                <span className="text-muted-foreground">
-                  {log.created_at
-                    ? new Date(log.created_at).toLocaleString()
-                    : ""}
-                </span>
+            {rolesQuery.isPending && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                正在加载…
+              </p>
+            )}
+            {rolesQuery.isError && (
+              <div role="alert" className="py-6 text-center">
+                <p className="text-sm">加载失败，请重试。</p>
+                <Button variant="link" onClick={() => rolesQuery.refetch()}>
+                  重新加载
+                </Button>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )}
+            {rolesQuery.data && rolesQuery.data.data.length === 0 && (
+              <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                暂无记录
+              </p>
+            )}
+            <div className="space-y-2 text-sm">
+              {rolesQuery.data?.data.map((role) => (
+                <div
+                  className="flex justify-between rounded border p-2"
+                  key={role.id}
+                >
+                  <span>{role.name}</span>
+                  <span className="text-muted-foreground">
+                    {role.description || "未填写说明"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === "settings" && (
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle>系统配置</CardTitle>
+            <CardDescription>
+              保存项目级开关和展示配置，不存放密码或密钥。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                aria-label="配置键"
+                placeholder="配置键，如 site.title"
+                value={settingKey}
+                onChange={(event) => setSettingKey(event.target.value)}
+              />
+              <Input
+                aria-label="配置值"
+                placeholder="配置值"
+                value={settingValue}
+                onChange={(event) => setSettingValue(event.target.value)}
+              />
+            </div>
+            <Button
+              disabled={!settingKey.trim() || updateSettingMutation.isPending}
+              onClick={() => updateSettingMutation.mutate()}
+            >
+              保存配置
+            </Button>
+            {settingsQuery.isPending && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                正在加载…
+              </p>
+            )}
+            {settingsQuery.isError && (
+              <div role="alert" className="py-6 text-center">
+                <p className="text-sm">加载失败，请重试。</p>
+                <Button variant="link" onClick={() => settingsQuery.refetch()}>
+                  重新加载
+                </Button>
+              </div>
+            )}
+            {settingsQuery.data && settingsQuery.data.length === 0 && (
+              <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                暂无记录
+              </p>
+            )}
+            <div className="space-y-2 text-sm">
+              {settingsQuery.data?.map((setting) => (
+                <div
+                  className="flex justify-between rounded border p-2"
+                  key={setting.key}
+                >
+                  <span>{setting.key}</span>
+                  <span className="text-muted-foreground truncate max-w-[60%]">
+                    {setting.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === "audit" && (
+        <Card className="shadow-none">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardTitle>操作日志</CardTitle>
+                <CardDescription>
+                  查看最近 20 条管理操作，追踪谁更改了什么。
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {auditQuery.isPending && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                正在加载…
+              </p>
+            )}
+            {auditQuery.isError && (
+              <div role="alert" className="py-6 text-center">
+                <p className="text-sm">加载失败，请重试。</p>
+                <Button variant="link" onClick={() => auditQuery.refetch()}>
+                  重新加载
+                </Button>
+              </div>
+            )}
+            {auditQuery.data && auditQuery.data.data.length === 0 && (
+              <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                暂无记录
+              </p>
+            )}
+            <div className="space-y-2 text-sm">
+              {auditQuery.data?.data.map((log) => (
+                <div
+                  className="grid gap-1 rounded border p-2 sm:grid-cols-[180px_1fr_auto]"
+                  key={log.id}
+                >
+                  <span>{log.action}</span>
+                  <span className="text-muted-foreground">
+                    {log.resource_type}
+                    {log.resource_id ? ` / ${log.resource_id}` : ""}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {log.created_at
+                      ? new Date(log.created_at).toLocaleString()
+                      : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
