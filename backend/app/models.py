@@ -320,3 +320,5 @@ class RolePermissionsUpdate(SQLModel):
 
 class RoleDetailPublic(RolePublic):
     permissions: list[str]
+    is_default: bool
+    user_count: int

@@ -35,7 +35,17 @@ export function useRoles() {
     },
     onError: handleError.bind(showErrorToast),
   })
-  return { query, create, update }
+  const remove = useMutation({
+    mutationFn: (roleId: string) => RolesService.deleteRole({ roleId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] })
+      queryClient.invalidateQueries({ queryKey: ["user-roles"] })
+      showSuccessToast("角色已删除")
+    },
+    onError: handleError.bind(showErrorToast),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["roles"] }),
+  })
+  return { query, create, update, remove }
 }
 
 export function useUserRoles(userId: string, enabled: boolean) {
@@ -55,6 +65,7 @@ export function useUserRoles(userId: string, enabled: boolean) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles", userId] })
       queryClient.invalidateQueries({ queryKey: ["access"] })
+      queryClient.invalidateQueries({ queryKey: ["roles"] })
       showSuccessToast("用户角色已更新")
     },
     onError: handleError.bind(showErrorToast),

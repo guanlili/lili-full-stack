@@ -2,12 +2,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import col, delete, select
+from sqlmodel import col, delete, func, select
 
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core.audit import record_audit
-from app.core.permissions import GRANTABLE_PERMISSIONS
+from app.core.permissions import GRANTABLE_PERMISSIONS, VISITOR_ROLE
 from app.models import (
+    Message,
     Permission,
     Role,
     RoleCreate,
@@ -46,7 +47,39 @@ def role_detail(session: SessionDep, role: Role) -> RoleDetailPublic:
     return RoleDetailPublic(
         **role.model_dump(),
         permissions=sorted(set(permissions) & GRANTABLE_PERMISSIONS),
+        is_default=role.name == VISITOR_ROLE,
+        user_count=session.exec(
+            select(func.count())
+            .select_from(UserRole)
+            .where(UserRole.role_id == role.id)
+        ).one(),
     )
+
+
+@router.delete("/{role_id}", response_model=Message)
+def delete_role(
+    session: SessionDep, current_user: CurrentUser, role_id: uuid.UUID
+) -> Message:
+    role = get_role(session, role_id)
+    if role.name == VISITOR_ROLE:
+        raise HTTPException(status_code=403, detail="默认访客角色不能删除")
+    if session.exec(select(UserRole).where(UserRole.role_id == role_id)).first():
+        raise HTTPException(
+            status_code=409, detail="该角色仍有用户使用，请先重新分配用户角色"
+        )
+    name = role.name
+    session.exec(delete(RolePermission).where(col(RolePermission.role_id) == role_id))
+    session.delete(role)
+    session.commit()
+    record_audit(
+        session=session,
+        actor=current_user,
+        action="role.deleted",
+        resource_type="role",
+        resource_id=role_id,
+        details={"name": name},
+    )
+    return Message(message="角色已删除")
 
 
 @router.get("/", response_model=list[RoleDetailPublic])
@@ -144,7 +177,12 @@ def update_user_roles(
         raise HTTPException(
             status_code=403, detail="Administrators have immutable full access"
         )
-    roles = session.exec(select(Role).where(col(Role.id).in_(body.role_ids))).all()
+    roles = session.exec(
+        select(Role)
+        .where(col(Role.id).in_(body.role_ids))
+        .order_by(col(Role.id))
+        .with_for_update()
+    ).all()
     if len(roles) != len(set(body.role_ids)):
         raise HTTPException(status_code=422, detail="Unknown role")
     session.exec(delete(UserRole).where(col(UserRole.user_id) == user_id))

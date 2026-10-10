@@ -63,6 +63,8 @@ export type RoleDetailPublic = {
     id: string;
     created_at?: (string | null);
     permissions: Array<(string)>;
+    is_default: boolean;
+    user_count: number;
 };
 
 export type RolePermissionsUpdate = {
@@ -189,6 +191,12 @@ export type PrivateCreateUserData = {
 };
 
 export type PrivateCreateUserResponse = (UserPublic);
+
+export type RolesDeleteRoleData = {
+    roleId: string;
+};
+
+export type RolesDeleteRoleResponse = (Message);
 
 export type RolesReadRolesResponse = (Array<RoleDetailPublic>);
 
