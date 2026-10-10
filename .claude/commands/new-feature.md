@@ -26,8 +26,9 @@ $ARGUMENTS — 功能名称或需求描述，例如 `订单管理`、`客户可�
    cd frontend && npm run generate-client
    ```
 7. **实现前端**：在 `frontend/src/routes/`、`frontend/src/components/` 和 `frontend/src/hooks/` 中按现有模式实现页面和数据请求。
-8. **更新导航**：需要出现在侧边栏时，修改 `frontend/src/components/Sidebar/AppSidebar.tsx`；不要手动修改自动生成的路由树。
-9. **验证**：运行后端 lint/测试、`cd frontend && npm run lint && npm test && npm run build`，并检查生成客户端的变更。
+8. **接入页面权限**：在 `backend/app/core/permissions.py` 的 `PAGES` 注册页面和权限编码，对数据接口使用 `require_permission()`，测试授权与撤销；未登记页面默认拒绝访问。
+9. **更新导航**：需要出现在侧边栏时，修改 `frontend/src/components/Sidebar/AppSidebar.tsx`；不要手动修改自动生成的路由树。
+10. **验证**：运行后端 lint/测试、`cd frontend && npm run lint && npm test && npm run build`，并检查生成客户端的变更。
 
 ## 交付说明
 

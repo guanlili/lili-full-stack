@@ -298,3 +298,25 @@ class JobPublic(SQLModel):
     error: str | None = None
     created_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class PageAccessPublic(SQLModel):
+    path: str
+    codename: str
+    title: str
+    admin_only: bool
+    allowed: bool
+
+
+class AccessPublic(SQLModel):
+    pages: list[PageAccessPublic]
+    permissions: list[str]
+    is_admin: bool
+
+
+class RolePermissionsUpdate(SQLModel):
+    permissions: list[str]
+
+
+class RoleDetailPublic(RolePublic):
+    permissions: list[str]

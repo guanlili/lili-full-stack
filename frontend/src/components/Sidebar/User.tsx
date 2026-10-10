@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAccess } from "@/hooks/useAccess"
 import useAuth from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
 
@@ -43,6 +44,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
 
 export function User({ user }: { user: UserPublic | null | undefined }) {
   const { logout, logoutAll } = useAuth()
+  const { data: access } = useAccess()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!user) return null
@@ -80,12 +82,16 @@ export function User({ user }: { user: UserPublic | null | undefined }) {
               <UserInfo fullName={user?.full_name} email={user?.email} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <RouterLink to="/settings" onClick={handleMenuClick}>
-              <DropdownMenuItem>
-                <Settings />
-                账号设置
-              </DropdownMenuItem>
-            </RouterLink>
+            {access?.pages.some(
+              (page) => page.path === "/settings" && page.allowed,
+            ) && (
+              <RouterLink to="/settings" onClick={handleMenuClick}>
+                <DropdownMenuItem>
+                  <Settings />
+                  账号设置
+                </DropdownMenuItem>
+              </RouterLink>
+            )}
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               退出登录
