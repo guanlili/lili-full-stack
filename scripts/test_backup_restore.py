@@ -53,25 +53,46 @@ class BackupValidationTests(unittest.TestCase):
                     deployment.restore(root)
                 run.assert_not_called()
 
-    def test_backup_restarts_original_services_after_failure(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            deployment = Deployment(Path(tmp))
-            calls = []
+    def test_failed_backup_is_removed_and_services_restart(self):
+        for stage in ("dump", "tar", "verify"):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as tmp:
+                deployment = Deployment(Path(tmp))
+                destination = Path(tmp) / "backups"
+                previous = destination / "previous"
+                previous.mkdir(parents=True)
+                self.make_snapshot(previous)
+                calls = []
 
-            def run(*args, **_kwargs):
-                calls.append(args)
-                if args[0] == "ps":
-                    return subprocess.CompletedProcess(
-                        [], 0, stdout="backend\nfrontend\n"
-                    )
-                if args[0] == "exec":
-                    raise RuntimeError("dump failed")
-                return subprocess.CompletedProcess([], 0)
+                def run(*args, **kwargs):
+                    calls.append(args)
+                    if args[0] == "ps":
+                        return subprocess.CompletedProcess(
+                            [], 0, stdout="backend\nfrontend\n"
+                        )
+                    if args[0] == "exec":
+                        kwargs["stdout"].write(b"partial dump")
+                        if stage == "dump":
+                            raise RuntimeError("dump failed")
+                    return subprocess.CompletedProcess([], 0)
 
-            with patch.object(deployment, "run", side_effect=run):
-                with self.assertRaisesRegex(RuntimeError, "dump failed"):
-                    deployment.backup(Path(tmp) / "backups")
-            self.assertIn(("start", "backend", "frontend"), calls)
+                def helper(_code, **kwargs):
+                    kwargs["stdout"].write(b"partial archive")
+                    if stage == "tar":
+                        raise RuntimeError("tar failed")
+
+                with (
+                    patch.object(deployment, "run", side_effect=run),
+                    patch.object(deployment, "helper", side_effect=helper),
+                    patch(
+                        "backup_restore.verify",
+                        side_effect=RuntimeError("verify failed"),
+                    ),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, f"{stage} failed"):
+                        deployment.backup(destination)
+                self.assertIn(("start", "backend", "frontend"), calls)
+                self.assertEqual(list(destination.iterdir()), [previous])
+                verify(previous)
 
     def test_nonempty_database_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

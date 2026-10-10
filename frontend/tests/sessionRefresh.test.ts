@@ -76,6 +76,10 @@ function fixture(
       access = ""
       refresh = null
     },
+    rotateInOtherTab: () => {
+      access = "other-tab-access"
+      refresh = "other-tab-refresh"
+    },
     state: () => ({ access, refresh, refreshCount, expired }),
   }
 }
@@ -217,4 +221,19 @@ test("two tabs sharing an exclusive lock rotate once", async () => {
     results.map((r) => r.status),
     [200, 200],
   )
+})
+
+test("without Web Locks, a losing refresh cannot clear another tab's new tokens", async () => {
+  const f = fixture({ refreshFails: 401 })
+  const request = f.request()
+  await waitForRefresh(f)
+  f.rotateInOtherTab()
+  f.release()
+  await assert.rejects(request, (error) => axios.isCancel(error))
+  assert.deepEqual(f.state(), {
+    access: "other-tab-access",
+    refresh: "other-tab-refresh",
+    refreshCount: 1,
+    expired: 0,
+  })
 })

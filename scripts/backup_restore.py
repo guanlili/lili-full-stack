@@ -5,8 +5,10 @@ import argparse
 import fcntl
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
+import tarfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,8 +52,6 @@ def verify(snapshot: Path) -> None:
         if digest(path) != manifest["sha256"][name]:
             raise RuntimeError(f"Checksum mismatch: {name}")
     # Validate every member before changing the target database or volume.
-    import tarfile
-
     with tarfile.open(snapshot / "uploads.tar") as archive:
         for member in archive:
             if not member.isfile() or Path(member.name).name != member.name:
@@ -94,15 +94,15 @@ class Deployment:
 
     def _backup(self, destination: Path) -> Path:
         destination.mkdir(parents=True, exist_ok=True, mode=0o700)
-        snapshot = destination / datetime.now(timezone.utc).strftime(
-            "%Y%m%dT%H%M%S.%fZ"
-        )
-        snapshot.mkdir(mode=0o700)
         running = self.run(
             "ps", "--status", "running", "--services", capture_output=True, text=True
         ).stdout.splitlines()
         if "prestart" in running:
             raise RuntimeError("Wait for deployment/migrations to finish before backup")
+        snapshot = destination / datetime.now(timezone.utc).strftime(
+            "%Y%m%dT%H%M%S.%fZ"
+        )
+        snapshot.mkdir(mode=0o700)
         stopped = [name for name in ("frontend", "backend") if name in running]
         try:
             if stopped:
@@ -129,6 +129,10 @@ class Deployment:
             (snapshot / "manifest.json").write_text(json.dumps(manifest, indent=2))
             (snapshot / "manifest.json").chmod(0o600)
             verify(snapshot)
+        except BaseException:
+            # This directory was created exclusively by this run. Keep prior snapshots.
+            shutil.rmtree(snapshot)
+            raise
         finally:
             if stopped:
                 self.run("start", *reversed(stopped))

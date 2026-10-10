@@ -108,7 +108,7 @@ python3 scripts/backup_restore.py backup /srv/backups/项目名 --project-dir /s
 
 脚本与部署任务通过 `.maintenance.lock` 互斥；服务器需要 `flock`（Linux 通常由 util-linux 提供）。备份会短暂停止正在运行的 frontend/backend，保持数据库与附件一致；无论备份成功与否，都会尝试恢复原来运行的服务。数据库保持运行，不能有绕过应用的其他写入者。请安排维护窗口；进程内后台任务可能被中断。
 
-每次产生独立快照目录，包含 `database.dump`、`uploads.tar` 和 `manifest.json`。未生成完整 manifest 或校验失败的目录不可恢复。文件不包含生产 `.env`，灾难恢复时仍需从 GitHub Secrets 配置新环境。
+每次产生独立快照目录，包含 `database.dump`、`uploads.tar` 和 `manifest.json`。失败时脚本会删除本次创建的快照目录，保留历史成功快照；未生成完整 manifest 或校验失败的目录不可恢复。应按保留期限定期清理过期快照，异常断电或进程被强制终止留下的半成品也需清理。文件不包含生产 `.env`，灾难恢复时仍需从 GitHub Secrets 配置新环境。
 
 定时任务示例（替换项目路径；按磁盘容量与数据保留要求设置异机存储生命周期）：
 

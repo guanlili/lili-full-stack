@@ -91,6 +91,9 @@ export function installSessionRefresh(
                   ? refreshError.response?.status
                   : (refreshError as { status?: number }).status
               if (status === 401) {
+                if (session.refreshToken() !== refreshToken) {
+                  throw new CanceledError("Session changed")
+                }
                 session.expire()
                 throw new CanceledError("Session expired")
               }
