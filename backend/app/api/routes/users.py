@@ -1,10 +1,7 @@
-import csv
-import io
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import col, func, select
 
 from app import crud
@@ -22,7 +19,6 @@ from app.models import (
     UpdatePassword,
     User,
     UserCreate,
-    UserImportResult,
     UserPublic,
     UserRegister,
     UsersPublic,
@@ -186,101 +182,6 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
     return user
-
-
-@router.get(
-    "/export.csv",
-    dependencies=[Depends(get_current_active_superuser)],
-)
-def export_users(session: SessionDep) -> StreamingResponse:
-    """Export non-sensitive user fields as UTF-8 CSV."""
-    users = session.exec(select(User).order_by(col(User.created_at))).all()
-
-    def rows():
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(
-            ["email", "full_name", "is_active", "is_superuser", "created_at"]
-        )
-        yield output.getvalue()
-        for user in users:
-            output = io.StringIO()
-            csv.writer(output).writerow(
-                [
-                    user.email,
-                    user.full_name or "",
-                    user.is_active,
-                    user.is_superuser,
-                    user.created_at.isoformat() if user.created_at else "",
-                ]
-            )
-            yield output.getvalue()
-
-    return StreamingResponse(
-        rows(),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=users.csv"},
-    )
-
-
-@router.post(
-    "/import.csv",
-    dependencies=[Depends(get_current_active_superuser)],
-    response_model=UserImportResult,
-)
-async def import_users(
-    *, session: SessionDep, current_user: CurrentUser, file: UploadFile = File(...)
-) -> UserImportResult:
-    """Import users from CSV columns: email,password,full_name,is_active."""
-    contents = await file.read(2 * 1024 * 1024 + 1)
-    if len(contents) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="CSV file cannot exceed 2 MB")
-    try:
-        reader = csv.DictReader(io.StringIO(contents.decode("utf-8-sig")))
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=400, detail="CSV must be UTF-8") from exc
-    required = {"email", "password"}
-    if not reader.fieldnames or not required.issubset(reader.fieldnames):
-        raise HTTPException(
-            status_code=400,
-            detail="CSV must contain email and password columns",
-        )
-
-    errors: list[str] = []
-    created_count = 0
-    for row_number, row in enumerate(reader, start=2):
-        email = (row.get("email") or "").strip()
-        password = row.get("password") or ""
-        if not email or len(password) < 8:
-            errors.append(
-                f"row {row_number}: email is required and password must be 8+ characters"
-            )
-            continue
-        if crud.get_user_by_email(session=session, email=email):
-            errors.append(f"row {row_number}: email already exists")
-            continue
-        try:
-            user_in = UserCreate(
-                email=email,
-                password=password,
-                full_name=(row.get("full_name") or "").strip() or None,
-                is_active=(row.get("is_active") or "true").lower() != "false",
-                is_superuser=False,
-            )
-            user = crud.create_user(session=session, user_create=user_in)
-            record_audit(
-                session=session,
-                actor=current_user,
-                action="user.imported",
-                resource_type="user",
-                resource_id=user.id,
-                details={"email": str(user.email), "row": row_number},
-            )
-            created_count += 1
-        except Exception as exc:
-            session.rollback()
-            errors.append(f"row {row_number}: invalid user data ({type(exc).__name__})")
-    return UserImportResult(created_count=created_count, errors=errors)
 
 
 @router.get("/{user_id}", response_model=UserPublic)

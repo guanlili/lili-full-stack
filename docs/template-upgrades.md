@@ -20,7 +20,6 @@
 | 会话事务/并发 | `backend/app/crud.py`、`api/routes/login.py`、`api/routes/users.py`、`models.py` | 密码更新统一撤销 Refresh Token；保留业务事务扩展 |
 | 前端刷新 | `frontend/src/lib/session*.ts`、`hooks/useAuth.ts`、`main.tsx` | 配套同步，避免只有短 Token 而没有自动刷新；保留项目自己的错误反馈 |
 | Access Token 默认值 | `backend/app/core/config.py` | 新签发 Token 默认 15 分钟；已签发 Token 保持原到期时间；已有环境配置可能覆盖默认值 |
-| 导出体验 | `hooks/useUserExport.ts`、`components/Admin/PlatformTools.tsx` | 适配项目实际管理页面；CSV 下载复用生成客户端 |
 | 联合备份 | `scripts/backup_restore.py`、`scripts/test_backup_restore.py` | 当前针对平铺本地附件目录；其他文件存储需适配 |
 | CI/维护互斥 | `.github/workflows/deploy.yml`、`.gitignore` | 服务器需要 `flock`；备份与部署必须使用同一部署目录 |
 | 开发规范 | `docs/module-development.md`、`.claude/commands/new-feature.md` | 保留客户额外规范 |
@@ -28,3 +27,7 @@
 本批无新增数据库迁移和 API 契约变更。`models.py` 的角色名、权限编码唯一性声明与既有 `0002` 唯一索引对齐；历史上绕过 Alembic 建库的项目需要先检查重复值与索引，再生成适用的修复迁移。刷新采用锁机制，不改变表结构。支持 Web Locks 的浏览器可跨标签页协调；不支持时退回单标签页共享刷新。Token 仍存储在 localStorage，这批更新没有改成 Cookie 会话。
 
 最低验证：后端 lint/独立库测试、前端 `npm run lint` / `npm test` / `npm run build`、`bash scripts/check-template.sh`、`python3 scripts/test_deploy.py`、`python3 scripts/test_backup_restore.py --integration`。恢复演练只使用临时 `app_test` 数据库。
+
+## 最小模板功能收敛
+
+当前版本移除了自定义角色、通用配置、文件、CSV 导入导出和后台任务接口，以及对应默认界面与客户端。已有客户项目若使用这些能力，应保留自身实现，不直接删除。历史表和附件 volume 不随本次升级删除；认证、两级权限和内部审计继续保留。

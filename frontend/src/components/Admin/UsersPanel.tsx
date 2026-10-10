@@ -45,7 +45,6 @@ import { useAdminUsers } from "@/hooks/useAdminUsers"
 import useAuth from "@/hooks/useAuth"
 import AddUser from "./AddUser"
 import { columns } from "./columns"
-import UserExport from "./UserExport"
 
 export default function UsersPanel() {
   const { user } = useAuth()
@@ -147,7 +146,6 @@ export default function UsersPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <UserExport />
             <AddUser />
           </div>
         </div>
