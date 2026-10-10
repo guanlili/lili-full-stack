@@ -3,6 +3,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
+from app.core.sessions import revoke_user_refresh_tokens
 from app.models import User, UserCreate, UserUpdate
 
 
@@ -26,6 +27,8 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         db_user.token_version += 1
     db_user.sqlmodel_update(user_data, update=extra_data)
     session.add(db_user)
+    if "password" in user_data:
+        revoke_user_refresh_tokens(session=session, user_id=db_user.id)
     session.commit()
     session.refresh(db_user)
     return db_user

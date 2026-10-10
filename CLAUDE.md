@@ -77,6 +77,7 @@ uv run bash scripts/tests-start.sh
 ```bash
 cd frontend
 npm run lint
+npm test
 npm run build
 ```
 
@@ -92,7 +93,7 @@ npm run build
 
 ## 模块开发说明
 
-模板只提供认证、用户管理、权限、基础布局和空 Dashboard。新业务模块应根据 `PROJECT_CONTEXT.md` 从数据模型、API、测试、生成客户端和页面导航开始实现。
+模板提供认证与会话、用户管理、角色权限、审计、文件、系统配置、用户导入导出和轻量后台任务。业务模块交付统一遵循 [docs/module-development.md](docs/module-development.md)。新业务模块应根据 `PROJECT_CONTEXT.md` 从数据模型、API、测试、生成客户端和页面导航开始实现。
 
 ## 技术规范
 

@@ -54,6 +54,8 @@ jobs:
           fi
       - name: 模板完整性检查
         run: bash scripts/check-template.sh
+      - name: 备份恢复校验
+        run: python3 scripts/test_backup_restore.py --integration
       - name: 部署配置回归检查
         run: python3 scripts/test_deploy.py
       - uses: astral-sh/setup-uv@v7
@@ -66,7 +68,9 @@ jobs:
         run: uv run bash scripts/lint.sh
       - name: 数据库迁移 + 初始数据（应用库，验证迁移链）
         working-directory: backend
-        run: uv run bash scripts/prestart.sh
+        run: |
+          uv run bash scripts/prestart.sh
+          uv run alembic check
       - name: 运行测试（独立测试库 app_test，由 conftest 自动创建）
         working-directory: backend
         run: uv run bash scripts/tests-start.sh
@@ -87,6 +91,9 @@ jobs:
       - name: Biome 检查
         working-directory: frontend
         run: npm run lint
+      - name: 会话回归测试
+        working-directory: frontend
+        run: npm test
       - name: 类型检查 + 构建
         working-directory: frontend
         run: npm run build
@@ -179,6 +186,9 @@ jobs:
             umask 077
             deploy_path=$(printf '%s' "$PATH_B64" | base64 -d)
             cd "$deploy_path"
+            # Share a host-level lock with backup/restore maintenance.
+            exec 9>.maintenance.lock
+            flock -x 9
             trap 'rm -f .env.new .deploy-target.new' EXIT
 
             echo "=== 1/5 checkout 到本次 CI 验证过的提交 ==="

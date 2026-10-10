@@ -105,7 +105,7 @@ class NewPassword(SQLModel):
 
 
 class RoleBase(SQLModel):
-    name: str = Field(min_length=1, max_length=100, index=True)
+    name: str = Field(min_length=1, max_length=100, index=True, unique=True)
     description: str | None = Field(default=None, max_length=255)
 
 
@@ -134,7 +134,7 @@ class RolesPublic(SQLModel):
 
 
 class PermissionBase(SQLModel):
-    codename: str = Field(min_length=1, max_length=100, index=True)
+    codename: str = Field(min_length=1, max_length=100, index=True, unique=True)
     description: str | None = Field(default=None, max_length=255)
 
 

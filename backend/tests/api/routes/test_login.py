@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -240,3 +242,93 @@ def test_use_invalid_token_returns_401(client: TestClient) -> None:
     assert r.status_code == 401
     # 401 必须带 WWW-Authenticate；403 留给"已登录但权限不足"（不触发前端登出）
     assert r.headers["WWW-Authenticate"] == "Bearer"
+
+
+def test_concurrent_refresh_consumes_token_once(client: TestClient) -> None:
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={
+            "username": settings.FIRST_SUPERUSER,
+            "password": settings.FIRST_SUPERUSER_PASSWORD,
+        },
+    )
+    token = login.json()["refresh_token"]
+    barrier = Barrier(2)
+
+    def refresh() -> int:
+        barrier.wait(timeout=10)
+        return client.post(
+            f"{settings.API_V1_STR}/login/refresh",
+            json={"refresh_token": token},
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(refresh) for _ in range(2)]
+        assert sorted(f.result(timeout=20) for f in futures) == [200, 401]
+
+
+def test_password_reset_revokes_persisted_sessions(
+    client: TestClient, db: Session
+) -> None:
+    email, password = random_email(), random_lower_string()
+    create_user(session=db, user_create=UserCreate(email=email, password=password))
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    ).json()
+    response = client.post(
+        f"{settings.API_V1_STR}/reset-password/",
+        json={
+            "token": generate_password_reset_token(email=email),
+            "new_password": random_lower_string(),
+        },
+    )
+    assert response.status_code == 200
+    assert (
+        client.post(
+            f"{settings.API_V1_STR}/login/refresh",
+            json={
+                "refresh_token": login["refresh_token"],
+            },
+        ).status_code
+        == 401
+    )
+    assert (
+        client.get(
+            f"{settings.API_V1_STR}/users/me",
+            headers={
+                "Authorization": f"Bearer {login['access_token']}",
+            },
+        ).status_code
+        == 401
+    )
+
+
+def test_admin_password_change_revokes_refresh_token(
+    client: TestClient, db: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    email, password = random_email(), random_lower_string()
+    user = create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    ).json()
+    assert (
+        client.patch(
+            f"{settings.API_V1_STR}/users/{user.id}",
+            headers=superuser_token_headers,
+            json={"password": random_lower_string()},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"{settings.API_V1_STR}/login/refresh",
+            json={
+                "refresh_token": login["refresh_token"],
+            },
+        ).status_code
+        == 401
+    )

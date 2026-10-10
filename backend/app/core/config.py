@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     # 必填：若给默认随机值，环境变量丢失时不报错，多 worker 下各进程密钥不同，token 时好时坏
     SECRET_KEY: str
-    # 60 minutes * 24 hours * 8 days = 8 days
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    # Short-lived access tokens are renewed through rotating refresh tokens.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"

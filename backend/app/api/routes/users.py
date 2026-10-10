@@ -333,8 +333,6 @@ def update_user(
             )
 
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
-    if user_in.password is not None:
-        revoke_user_refresh_tokens(session=session, user_id=db_user.id)
     record_audit(
         session=session,
         actor=current_user,

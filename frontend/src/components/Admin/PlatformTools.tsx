@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
-import { JobsService, PlatformService, SettingsService } from "@/client"
+import { PlatformService, SettingsService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import useCustomToast from "@/hooks/useCustomToast"
+import { useUserExport } from "@/hooks/useUserExport"
 import { handleError } from "@/utils"
 
 export default function PlatformTools() {
@@ -21,7 +22,8 @@ export default function PlatformTools() {
   const [roleDescription, setRoleDescription] = useState("")
   const [settingKey, setSettingKey] = useState("")
   const [settingValue, setSettingValue] = useState("")
-  const [exportJobId, setExportJobId] = useState<string | null>(null)
+  const { enqueue, jobQuery, download, downloadUrl, downloadRef } =
+    useUserExport()
 
   const rolesQuery = useQuery({
     queryKey: ["platform-roles"],
@@ -35,22 +37,6 @@ export default function PlatformTools() {
     queryKey: ["system-settings"],
     queryFn: () => SettingsService.readSettings(),
   })
-  const exportJobQuery = useQuery({
-    queryKey: ["user-export-job", exportJobId],
-    queryFn: () => JobsService.readJob({ jobId: exportJobId! }),
-    enabled: Boolean(exportJobId),
-    refetchInterval: 2000,
-  })
-
-  const exportUsersMutation = useMutation({
-    mutationFn: () => JobsService.enqueueUsersExport(),
-    onSuccess: (job) => {
-      setExportJobId(job.id)
-      showSuccessToast("用户导出任务已提交")
-    },
-    onError: handleError.bind(showErrorToast),
-  })
-
   const createRoleMutation = useMutation({
     mutationFn: () =>
       PlatformService.createRole({
@@ -176,8 +162,13 @@ export default function PlatformTools() {
               </CardDescription>
             </div>
             <Button
-              disabled={exportUsersMutation.isPending}
-              onClick={() => exportUsersMutation.mutate()}
+              disabled={
+                enqueue.isPending ||
+                jobQuery.isLoading ||
+                jobQuery.data?.status === "queued" ||
+                jobQuery.data?.status === "running"
+              }
+              onClick={() => enqueue.mutate()}
               variant="outline"
             >
               导出用户 CSV
@@ -185,14 +176,43 @@ export default function PlatformTools() {
           </div>
         </CardHeader>
         <CardContent>
-          {exportJobQuery.data && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              导出任务状态：{exportJobQuery.data.status}
-              {exportJobQuery.data.result?.file_id
-                ? `，文件 ID：${exportJobQuery.data.result.file_id}`
-                : ""}
+          {jobQuery.data && (
+            <div className="mb-4 flex items-center gap-3 text-sm">
+              <span>导出任务状态：{jobQuery.data.status}</span>
+              {jobQuery.data.status === "failed" && (
+                <span role="alert">导出失败，请重新提交。</span>
+              )}
+              {jobQuery.data.status === "completed" &&
+                typeof jobQuery.data.result?.file_id === "string" && (
+                  <Button
+                    variant="outline"
+                    disabled={download.isPending}
+                    onClick={() => {
+                      const fileId = jobQuery.data?.result?.file_id
+                      if (typeof fileId === "string") download.mutate(fileId)
+                    }}
+                  >
+                    {download.isPending ? "准备下载…" : "下载 CSV"}
+                  </Button>
+                )}
+            </div>
+          )}
+          {jobQuery.isError && (
+            <p role="alert" className="mb-4 text-sm">
+              无法查询导出状态。
+              <Button variant="link" onClick={() => jobQuery.refetch()}>
+                重试
+              </Button>
             </p>
           )}
+          <a
+            ref={downloadRef}
+            href={downloadUrl ?? undefined}
+            download="users.csv"
+            hidden
+          >
+            下载用户 CSV
+          </a>
           <div className="space-y-2 text-sm">
             {auditQuery.data?.data.map((log) => (
               <div
