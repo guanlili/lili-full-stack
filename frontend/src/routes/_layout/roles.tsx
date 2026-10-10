@@ -10,6 +10,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { APP_NAME } from "@/config"
@@ -23,7 +31,10 @@ export const Route = createFileRoute("/_layout/roles")({
 
 function RoleCard({ role }: { role: RoleDetailPublic }) {
   const { data: access } = useAccess()
-  const { update } = useRoles()
+  const { update, remove } = useRoles()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const deleteBlocked = role.is_default || role.user_count > 0
+  const busy = update.isPending || remove.isPending
   const [permissions, setPermissions] = useState(role.permissions)
   return (
     <Card className="shadow-none">
@@ -34,6 +45,11 @@ function RoleCard({ role }: { role: RoleDetailPublic }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        <p className="text-sm text-muted-foreground">
+          {role.is_default
+            ? "默认角色 · 未分配角色的账号自动使用，不能删除"
+            : `${role.user_count} 个账号正在使用${role.user_count > 0 ? "，需先重新分配后才能删除" : ""}`}
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {access?.pages
             .filter((page) => !page.admin_only)
@@ -45,7 +61,7 @@ function RoleCard({ role }: { role: RoleDetailPublic }) {
               >
                 <Checkbox
                   id={`${role.id}-${page.codename}`}
-                  disabled={update.isPending}
+                  disabled={busy}
                   checked={permissions.includes(page.codename)}
                   onCheckedChange={(checked) =>
                     setPermissions((previous) =>
@@ -69,6 +85,7 @@ function RoleCard({ role }: { role: RoleDetailPublic }) {
         <LoadingButton
           loading={update.isPending}
           disabled={
+            busy ||
             !access ||
             permissions.slice().sort().join() ===
               role.permissions.slice().sort().join()
@@ -77,6 +94,50 @@ function RoleCard({ role }: { role: RoleDetailPublic }) {
         >
           保存权限
         </LoadingButton>
+        <Button
+          className="sm:ml-3"
+          variant="outline"
+          disabled={busy || deleteBlocked}
+          onClick={() => setConfirmDelete(true)}
+        >
+          删除角色
+        </Button>
+        <Dialog
+          open={confirmDelete}
+          onOpenChange={(open) => {
+            if (!remove.isPending) setConfirmDelete(open)
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>删除“{role.name}”？</DialogTitle>
+              <DialogDescription>
+                此角色及其权限配置将被永久删除，无法恢复。仅未被用户使用的自定义角色可以删除。
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                disabled={remove.isPending}
+                onClick={() => setConfirmDelete(false)}
+              >
+                取消
+              </Button>
+              <LoadingButton
+                variant="destructive"
+                loading={remove.isPending}
+                disabled={deleteBlocked}
+                onClick={() =>
+                  remove.mutate(role.id, {
+                    onSuccess: () => setConfirmDelete(false),
+                  })
+                }
+              >
+                确认删除
+              </LoadingButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )
