@@ -1,121 +1,70 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Suspense } from "react"
-import { type UserPublic, UsersService } from "@/client"
-import AddUser from "@/components/Admin/AddUser"
-import { columns, type UserTableData } from "@/components/Admin/columns"
+import { History, Settings2, ShieldCheck, Users } from "lucide-react"
+import { UsersService } from "@/client"
 import PlatformTools from "@/components/Admin/PlatformTools"
-import { DataTable } from "@/components/Common/DataTable"
-import PendingUsers from "@/components/Pending/PendingUsers"
-import { LoadingButton } from "@/components/ui/loading-button"
+import UsersPanel from "@/components/Admin/UsersPanel"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { APP_NAME } from "@/config"
-import useAuth from "@/hooks/useAuth"
-import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
-
-function getUsersQueryOptions() {
-  return {
-    queryFn: () => UsersService.readUsers({ skip: 0, limit: 100 }),
-    queryKey: ["users"],
-  }
-}
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
   beforeLoad: async () => {
     const user = await UsersService.readUserMe()
-    if (!user.is_superuser) {
-      throw redirect({
-        to: "/",
-      })
-    }
+    if (!user.is_superuser) throw redirect({ to: "/" })
   },
-  head: () => ({
-    meta: [
-      {
-        title: `用户管理 - ${APP_NAME}`,
-      },
-    ],
-  }),
+  head: () => ({ meta: [{ title: `用户管理 - ${APP_NAME}` }] }),
 })
-
-function UsersTableContent() {
-  const { user: currentUser } = useAuth()
-  const { data: users } = useSuspenseQuery(getUsersQueryOptions())
-  const queryClient = useQueryClient()
-  const { showErrorToast, showSuccessToast } = useCustomToast()
-  const deleteUsersMutation = useMutation({
-    mutationFn: (userIds: string[]) =>
-      Promise.all(userIds.map((userId) => UsersService.deleteUser({ userId }))),
-    onError: handleError.bind(showErrorToast),
-    onSuccess: (_result, userIds) => {
-      showSuccessToast(`已删除 ${userIds.length} 个用户`)
-      queryClient.invalidateQueries({ queryKey: ["users"] })
-    },
-  })
-
-  const tableData: UserTableData[] = users.data.map((user: UserPublic) => ({
-    ...user,
-    isCurrentUser: currentUser?.id === user.id,
-  }))
-
-  return (
-    <DataTable
-      bulkActions={(rows, clearSelection) => (
-        <LoadingButton
-          className="w-full sm:w-auto"
-          loading={deleteUsersMutation.isPending}
-          onClick={() => {
-            if (
-              window.confirm(
-                `确定删除选中的 ${rows.length} 个用户吗？此操作无法撤销。`,
-              )
-            ) {
-              deleteUsersMutation.mutate(
-                rows.map((row) => row.id),
-                { onSuccess: clearSelection },
-              )
-            }
-          }}
-          size="sm"
-          variant="destructive"
-        >
-          删除选中（{rows.length}）
-        </LoadingButton>
-      )}
-      columns={columns}
-      data={tableData}
-      enableRowSelection={(row) => row.id !== currentUser?.id}
-      getRowId={(row) => row.id}
-      searchPlaceholder="搜索姓名或邮箱"
-    />
-  )
-}
-
-function UsersTable() {
-  return (
-    <Suspense fallback={<PendingUsers />}>
-      <UsersTableContent />
-    </Suspense>
-  )
-}
 
 function Admin() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">用户管理</h1>
-          <p className="text-muted-foreground">管理用户账号和权限</p>
-        </div>
-        <AddUser />
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+      <div>
+        <p className="mb-2 text-xs font-medium tracking-widest text-muted-foreground">
+          系统管理
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          用户与访问管理
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          统一管理账号、角色和系统访问，重要操作均可追溯。
+        </p>
       </div>
-      <UsersTable />
-      <PlatformTools />
+      <Tabs defaultValue="users" className="gap-6">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b bg-transparent p-0 pb-2 sm:w-fit">
+          <TabsTrigger value="users" className="px-2 py-2 sm:px-4">
+            <Users className="hidden sm:block" />
+            用户账号
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="px-2 py-2 sm:px-4">
+            <ShieldCheck className="hidden sm:block" />
+            角色管理
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="px-2 py-2 sm:px-4">
+            <History className="hidden sm:block" />
+            操作日志
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="px-2 py-2 sm:px-4">
+            <Settings2 className="hidden sm:block" />
+            系统配置
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent
+          value="users"
+          forceMount
+          className="data-[state=inactive]:hidden"
+        >
+          <UsersPanel />
+        </TabsContent>
+        <TabsContent value="roles">
+          <PlatformTools section="roles" />
+        </TabsContent>
+        <TabsContent value="audit">
+          <PlatformTools section="audit" />
+        </TabsContent>
+        <TabsContent value="settings">
+          <PlatformTools section="settings" />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
