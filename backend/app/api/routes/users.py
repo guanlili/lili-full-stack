@@ -2,13 +2,14 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import col, func, select
+from sqlmodel import col, delete, func, select
 
 from app import crud
 from app.api.deps import (
     CurrentUser,
     SessionDep,
     get_current_active_superuser,
+    require_permission,
 )
 from app.core.audit import record_audit
 from app.core.config import settings
@@ -21,6 +22,7 @@ from app.models import (
     UserCreate,
     UserPublic,
     UserRegister,
+    UserRole,
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
@@ -32,7 +34,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get(
     "/",
-    dependencies=[Depends(get_current_active_superuser)],
+    dependencies=[Depends(require_permission("users.view"))],
     response_model=UsersPublic,
 )
 def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
@@ -89,7 +91,11 @@ def create_user(
     return user
 
 
-@router.patch("/me", response_model=UserPublic)
+@router.patch(
+    "/me",
+    response_model=UserPublic,
+    dependencies=[Depends(require_permission("profile.view"))],
+)
 def update_user_me(
     *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
 ) -> Any:
@@ -111,7 +117,11 @@ def update_user_me(
     return current_user
 
 
-@router.patch("/me/password", response_model=Message)
+@router.patch(
+    "/me/password",
+    response_model=Message,
+    dependencies=[Depends(require_permission("profile.view"))],
+)
 def update_password_me(
     *, session: SessionDep, body: UpdatePassword, current_user: CurrentUser
 ) -> Any:
@@ -149,7 +159,11 @@ def read_user_me(current_user: CurrentUser) -> Any:
     return current_user
 
 
-@router.delete("/me", response_model=Message)
+@router.delete(
+    "/me",
+    response_model=Message,
+    dependencies=[Depends(require_permission("profile.view"))],
+)
 def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
     Delete own user.
@@ -158,6 +172,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    session.exec(delete(UserRole).where(col(UserRole.user_id) == current_user.id))
     session.delete(current_user)
     session.commit()
     return Message(message="User deleted successfully")
@@ -259,6 +274,7 @@ def delete_user(
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    session.exec(delete(UserRole).where(col(UserRole.user_id) == user.id))
     session.delete(user)
     session.commit()
     record_audit(

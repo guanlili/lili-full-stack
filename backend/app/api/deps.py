@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Annotated
 
 import jwt
@@ -67,3 +67,13 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def require_permission(codename: str) -> Callable[[Session, User], User]:
+    def dependency(session: SessionDep, current_user: CurrentUser) -> User:
+        from app.core.permissions import check_permission
+
+        check_permission(session, current_user, codename)
+        return current_user
+
+    return dependency

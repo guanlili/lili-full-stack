@@ -85,7 +85,7 @@ export default function UsersPanel() {
     getCoreRowModel: getCoreRowModel(),
   })
   const selectable = data
-    .filter((account) => !account.isCurrentUser)
+    .filter((account) => user?.is_superuser && !account.isCurrentUser)
     .map((account) => account.id)
   const allSelected =
     selectable.length > 0 && selectable.every((id) => selected.includes(id))
@@ -142,11 +142,11 @@ export default function UsersPanel() {
           <div>
             <h2 className="font-semibold">账号列表</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              创建账号、调整访问权限，或停用不再使用的账号。
+              管理员可创建账号、分配角色或停用账号；其他角色仅能查看列表。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <AddUser />
+            {user?.is_superuser && <AddUser />}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 border-b p-4">
@@ -267,7 +267,9 @@ export default function UsersPanel() {
                       <Checkbox
                         aria-label={`选择 ${row.original.email}`}
                         disabled={
-                          row.original.isCurrentUser || query.isPlaceholderData
+                          !user?.is_superuser ||
+                          row.original.isCurrentUser ||
+                          query.isPlaceholderData
                         }
                         checked={selected.includes(row.original.id)}
                         onCheckedChange={(checked) =>

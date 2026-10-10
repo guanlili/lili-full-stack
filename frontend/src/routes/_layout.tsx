@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
+import { AccessService } from "@/client"
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -8,14 +9,21 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
+import { canAccessPath } from "@/lib/access"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (!isLoggedIn()) {
       throw redirect({
         to: "/login",
       })
+    }
+    if (location.pathname.replace(/\/$/, "") !== "/forbidden") {
+      const access = await AccessService.readAccess()
+      if (!canAccessPath(access.pages, location.pathname)) {
+        throw redirect({ to: "/forbidden" })
+      }
     }
   },
 })

@@ -1,14 +1,9 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
-import { UsersService } from "@/client"
+import { createFileRoute } from "@tanstack/react-router"
 import UsersPanel from "@/components/Admin/UsersPanel"
 import { APP_NAME } from "@/config"
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
-  beforeLoad: async () => {
-    const user = await UsersService.readUserMe()
-    if (!user.is_superuser) throw redirect({ to: "/" })
-  },
   head: () => ({ meta: [{ title: `用户管理 - ${APP_NAME}` }] }),
 })
 
