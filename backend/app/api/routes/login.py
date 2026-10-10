@@ -81,7 +81,23 @@ def refresh_access_token(*, session: SessionDep, body: RefreshTokenRequest) -> T
     now = datetime.now(UTC)
     if token is None or token.revoked_at is not None or token.expires_at <= now:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-    user = session.get(User, token.user_id)
+    # Lock the user before the token, matching password changes/logout-all.
+    # Re-read the token after waiting so a concurrent rotation cannot reuse it.
+    user = session.exec(
+        select(User).where(User.id == token.user_id).with_for_update()
+    ).first()
+    token = session.exec(
+        select(RefreshToken)
+        .where(RefreshToken.id == token.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).first()
+    if (
+        token is None
+        or token.revoked_at is not None
+        or token.expires_at <= datetime.now(UTC)
+    ):
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     token.revoked_at = now
@@ -179,7 +195,6 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
         db_user=user,
         user_in=user_in_update,
     )
-    revoke_user_refresh_tokens(session=session, user_id=user.id)
     return Message(message="Password updated successfully")
 
 

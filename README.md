@@ -53,7 +53,7 @@ bash scripts/init-project.sh "项目显示名"
 
 ### 第四步：确认项目基线
 
-模板不预置业务 CRUD 示例，只包含认证、用户管理、权限、基础布局和空 Dashboard。
+模板不预置业务 CRUD 示例，内置认证与会话、用户管理、角色权限、审计、文件上传、系统配置、用户 CSV 导入导出、轻量后台任务和基础布局。
 新项目直接根据 `PROJECT_CONTEXT.md` 开发业务模块，不需要先清理示例表、路由、测试和生成客户端。
 
 同时确定注册方式：自助注册默认只在本地开启，生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关闭。
@@ -151,7 +151,9 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 
 ### 从模板同步改进到现有项目
 
-模板和具体项目是独立仓库，没有 git 关联。需要手动同步时，把模板级文件（`AGENTS.md`、`CLAUDE.md`、`AI_RULES.md`、`docs/`、`compose.yml`、`.claude/commands/`）复制过去；不要覆盖客户项目自己的 `PROJECT_CONTEXT.md`。
+模板版本见 [CHANGELOG.md](CHANGELOG.md)，同步流程见 [docs/template-upgrades.md](docs/template-upgrades.md)。按功能挑选并适配改动，保留客户业务和部署差异；不要整目录覆盖客户项目。
+
+业务模块统一交付清单见 [docs/module-development.md](docs/module-development.md)。
 
 ---
 
@@ -197,11 +199,11 @@ lili-full-stack/
 
 | 不做什么 | 为什么 |
 |---------|--------|
-| 前端单元测试（vitest） | 模板阶段收益低。前端质量门槛 = tsc 类型检查 + biome + 后端 API 测试兜底；具体项目有复杂前端逻辑时再按需引入 |
+| 通用前端测试框架（vitest） | 当前使用 Node 内置测试运行器覆盖会话刷新关键逻辑；复杂组件与交互测试按具体项目引入 |
 | dependabot / renovate | 小团队没精力处理持续的升级 PR 噪音。用季度 `/upgrade-deps` 集中升级 + 验证代替 |
 | pre-commit 钩子 | CI 是唯一质量门槛。本地钩子对 AI 驱动的开发是摩擦（AI 每次提交都会被格式化钩子打断），且和 CI 重复 |
 | staging 环境 | 单服务器多项目、快速交付定位。staging 的维护成本大于收益；重要变更靠 CI 门槛 + 部署后健康检查兜底 |
-| JWT refresh token | 8 天 access token + localStorage 是简单性取舍，适合工具型产品。对安全有更高要求的项目再升级会话机制 |
+| Cookie 会话 | 当前使用 localStorage 保存 Token，Access Token 默认 15 分钟、Refresh Token 30 天并轮换；前端自动刷新。需要 Cookie 会话的项目另行设计 CSRF 与跨域策略 |
 | 登录接口限流 | 不在代码层加依赖。`rate_limit` **不是 Caddy 内置模块**——官方发行版不带，需要用 `xcaddy` 自行构建含 `caddy-ratelimit` 插件的二进制（或换用云防火墙/WAF 做限流）；模板不提供也不默认包含，正式上线且暴露公网时再评估 |
 | 重置密码 token 一次性失效 | token 48 小时内可重复使用（改完密码不作废）。工具型项目风险低；高安全要求的项目可把 token 绑定当前密码 hash（密码一改即失效） |
 | 生产环境隐藏 `/docs`、`/redoc` | API 文档公开对内网工具是便利。正式上线面向公网的项目建议关闭（`ENVIRONMENT=production` 时设 `docs_url=None`）或在 Caddy 层加 basic auth |

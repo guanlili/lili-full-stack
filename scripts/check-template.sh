@@ -15,6 +15,11 @@ required_files=(
   "compose.yml"
   "compose.override.yml"
   "docs/deployment.md"
+  "docs/module-development.md"
+  "docs/template-upgrades.md"
+  "CHANGELOG.md"
+  "scripts/backup_restore.py"
+  "scripts/test_backup_restore.py"
   "frontend/package.json"
   "frontend/package-lock.json"
 )

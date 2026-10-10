@@ -98,18 +98,53 @@ python3 scripts/test_deploy.py
 
 ## 数据库备份
 
-生产数据位于 Docker volume 中。上线后配置定时备份：
+生产数据分为 PostgreSQL 和附件 volume `app-uploads`，必须一起备份。模板提供联合备份、SHA-256 校验和空环境恢复工具。备份包含客户数据，应放在权限受限的目录并同步到异机加密存储；校验和用于发现损坏，不提供防篡改认证。
+
+### 联合备份
 
 ```bash
-# crontab -e：每天凌晨 3 点备份，保留最近 7 天
-0 3 * * * docker compose -f 部署路径/compose.yml exec -T db pg_dump -U postgres app | gzip > /备份目录/db-$(date +\%w).sql.gz
+python3 scripts/backup_restore.py backup /srv/backups/项目名 --project-dir /srv/项目部署目录
 ```
 
-恢复：
+脚本与部署任务通过 `.maintenance.lock` 互斥；服务器需要 `flock`（Linux 通常由 util-linux 提供）。备份会短暂停止正在运行的 frontend/backend，保持数据库与附件一致；无论备份成功与否，都会尝试恢复原来运行的服务。数据库保持运行，不能有绕过应用的其他写入者。请安排维护窗口；进程内后台任务可能被中断。
+
+每次产生独立快照目录，包含 `database.dump`、`uploads.tar` 和 `manifest.json`。未生成完整 manifest 或校验失败的目录不可恢复。文件不包含生产 `.env`，灾难恢复时仍需从 GitHub Secrets 配置新环境。
+
+定时任务示例（替换项目路径；按磁盘容量与数据保留要求设置异机存储生命周期）：
+
+```cron
+0 3 * * * /usr/bin/python3 /srv/项目部署目录/scripts/backup_restore.py backup /srv/backups/项目名 --project-dir /srv/项目部署目录 >> /srv/backups/项目名/backup.log 2>&1
+```
+
+安装定时任务前先创建备份目录并限制权限；配置备份失败告警。应定期在隔离环境恢复最新快照，不能只检查文件存在。
+
+### 校验与恢复
 
 ```bash
-gunzip -c 备份文件.sql.gz | docker compose exec -T db psql -U postgres app
+python3 scripts/backup_restore.py verify /srv/backups/项目名/快照目录
 ```
+
+恢复目标必须是独立新环境或已人工确认的空数据库与空附件卷。准备对应版本代码、生产配置和 backend 镜像，**不要先启动 prestart**，它会建表导致空库检查失败：
+
+```bash
+cd /srv/恢复环境
+# compose.yml 必须使用独立 COMPOSE_PROJECT_NAME，避免指向现有项目卷。
+docker compose -f compose.yml build backend
+python3 scripts/backup_restore.py restore /srv/backups/项目名/快照目录 --project-dir /srv/恢复环境 --confirm-restore
+docker compose -f compose.yml up -d
+```
+
+工具会先验证校验和和附件路径，再检查应用已停止、数据库为空、附件卷为空；数据库在事务中恢复。恢复失败时不要启动应用，应检查目标并重新准备空环境后重试。数据库与文件系统无法跨存储原子提交，附件恢复失败时可能留下已恢复的数据库。
+
+启动后检查 readiness、登录、关键业务记录与附件下载。新版本代码需要通过 prestart 正常应用后续迁移；备份格式或 PostgreSQL 大版本变化时先在隔离环境验证兼容性。
+
+本地与 CI 的隔离恢复演练：
+
+```bash
+python3 scripts/test_backup_restore.py --integration
+```
+
+演练自动创建两个临时 Compose 项目，只使用 `app_test` 数据库；比较恢复后的记录与附件字节，验证拒绝覆盖非空库，并清理临时容器与卷。
 
 ## 回滚
 
