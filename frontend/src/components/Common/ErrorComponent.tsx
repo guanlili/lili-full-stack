@@ -22,6 +22,13 @@ const ErrorComponent = () => {
       <Link to="/">
         <Button>返回首页</Button>
       </Link>
+      <Button
+        className="mt-3"
+        onClick={() => window.location.reload()}
+        variant="outline"
+      >
+        重新加载
+      </Button>
     </div>
   )
 }
