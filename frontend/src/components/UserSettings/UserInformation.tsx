@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { UsersService, type UserUpdateMe } from "@/client"
+import { Users as UsersService, type UserUpdateMe } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -64,7 +64,9 @@ const UserInformation = () => {
 
   const mutation = useMutation({
     mutationFn: (data: UserUpdateMe) =>
-      UsersService.updateUserMe({ requestBody: data }),
+      UsersService.updateUserMe({ body: data, throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: (updatedUser) => {
       queryClient.setQueryData(["currentUser"], updatedUser)
       form.reset({

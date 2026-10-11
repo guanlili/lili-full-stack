@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 
-import { UsersService } from "@/client"
+import { Users as UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,7 +25,10 @@ const DeleteConfirmation = () => {
   const { logout } = useAuth()
 
   const mutation = useMutation({
-    mutationFn: () => UsersService.deleteUserMe(),
+    mutationFn: () =>
+      UsersService.deleteUserMe({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: () => {
       showSuccessToast("账号已成功注销")
       logout()

@@ -7,8 +7,8 @@ import {
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import type { Body_login_login_access_token as AccessToken } from "@/client"
-import { LoginService } from "@/client"
+import type { BodyLoginLoginAccessToken as AccessToken } from "@/client"
+import { Login as LoginService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import { Button } from "@/components/ui/button"
 import {
@@ -74,7 +74,9 @@ function Login() {
   const fillDemoCredentials = async () => {
     setDemoCredentialsLoading(true)
     try {
-      const credentials = await LoginService.demoCredentials()
+      const credentials = await LoginService.demoCredentials({
+        throwOnError: true,
+      }).then((response) => response.data)
       form.setValue("username", credentials.username, { shouldValidate: true })
       form.setValue("password", credentials.password, { shouldValidate: true })
     } finally {

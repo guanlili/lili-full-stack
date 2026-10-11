@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, literal
 from sqlmodel import Session, select
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_fixed
 
@@ -23,7 +23,7 @@ def init(db_engine: Engine) -> None:
     try:
         # 连接的是管理库 postgres：测试库本身由 conftest 按需创建，这里只等实例可达
         with Session(db_engine) as session:
-            session.exec(select(1))
+            session.exec(select(literal(1)))
     except Exception as e:
         logger.error(e)
         raise e

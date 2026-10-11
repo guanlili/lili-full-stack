@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { UsersService } from "@/client"
+import { Users as UsersService } from "@/client"
 import { handleError } from "@/utils"
 import useCustomToast from "./useCustomToast"
 
@@ -14,13 +14,21 @@ export function useAdminUsers(page: number, pageSize: number) {
   const query = useQuery({
     queryKey: ["users", { page, pageSize }],
     queryFn: () =>
-      UsersService.readUsers({ skip: page * pageSize, limit: pageSize }),
+      UsersService.readUsers({
+        query: { skip: page * pageSize, limit: pageSize },
+        throwOnError: true,
+      }).then((response) => response.data),
     placeholderData: keepPreviousData,
   })
   const remove = useMutation({
     mutationFn: async (ids: string[]) => {
       const results = await Promise.allSettled(
-        ids.map((userId) => UsersService.deleteUser({ userId })),
+        ids.map((userId) =>
+          UsersService.deleteUser({
+            path: { user_id: userId },
+            throwOnError: true,
+          }).then((response) => response.data),
+        ),
       )
       return {
         succeeded: results.filter((result) => result.status === "fulfilled")

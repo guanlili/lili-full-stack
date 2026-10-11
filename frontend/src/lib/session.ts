@@ -1,5 +1,6 @@
 import axios from "axios"
-import { LoginService, OpenAPI, type Token } from "@/client"
+import { Login as LoginService, type Token } from "@/client"
+import { client } from "@/client/client.gen"
 import { installSessionRefresh } from "./sessionRefresh"
 
 export function clearSession() {
@@ -40,16 +41,21 @@ export function configureSession() {
       crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     )
   }
-  OpenAPI.BASE = import.meta.env.VITE_API_URL
-  OpenAPI.TOKEN = async () => localStorage.getItem("access_token") || ""
+  client.setConfig({
+    axios,
+    baseURL: import.meta.env.VITE_API_URL,
+    auth: () => localStorage.getItem("access_token") || "",
+    throwOnError: true,
+  })
   return installSessionRefresh(axios, {
     version: () => localStorage.getItem("session_id"),
     accessToken: () => localStorage.getItem("access_token"),
     refreshToken: () => localStorage.getItem("refresh_token"),
     refresh: (token) =>
       LoginService.refreshAccessToken({
-        requestBody: { refresh_token: token },
-      }),
+        body: { refresh_token: token },
+        throwOnError: true,
+      }).then((response) => response.data),
     save: storeTokens,
     expire: expireSession,
     exclusive: async (operation) => {

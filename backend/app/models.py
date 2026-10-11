@@ -56,7 +56,7 @@ class User(UserBase, table=True):
     token_version: int = 0
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -115,7 +115,7 @@ class Role(RoleBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -184,7 +184,7 @@ class AuditLog(SQLModel, table=True):
     )
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -214,7 +214,7 @@ class FileAsset(SQLModel, table=True):
     owner_user_id: uuid.UUID | None = Field(default=None, index=True)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -235,7 +235,7 @@ class SystemSetting(SQLModel, table=True):
     description: str | None = Field(default=None, max_length=255)
     updated_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -257,14 +257,14 @@ class RefreshToken(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     token_hash: str = Field(max_length=64, unique=True, index=True)
     user_id: uuid.UUID = Field(index=True)
-    expires_at: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
+    expires_at: datetime = Field(sa_type=DateTime(timezone=True))
     revoked_at: datetime | None = Field(
         default=None,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
@@ -281,11 +281,11 @@ class Job(SQLModel, table=True):
     error: str | None = Field(default=None, max_length=1000)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
     finished_at: datetime | None = Field(
         default=None,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        sa_type=DateTime(timezone=True),
     )
 
 
