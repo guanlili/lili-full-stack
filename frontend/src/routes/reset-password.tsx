@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { LoginService } from "@/client"
+import { Login as LoginService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -81,7 +81,9 @@ function ResetPassword() {
 
   const mutation = useMutation({
     mutationFn: (data: { new_password: string; token: string }) =>
-      LoginService.resetPassword({ requestBody: data }),
+      LoginService.resetPassword({ body: data, throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: () => {
       showSuccessToast("密码修改成功")
       form.reset()

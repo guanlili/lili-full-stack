@@ -1,5 +1,4 @@
 import { AxiosError } from "axios"
-import type { ApiError } from "./client"
 
 const ERROR_MESSAGE_TRANSLATIONS: Record<string, string> = {
   "Could not validate credentials": "登录凭证无效",
@@ -27,13 +26,13 @@ function translateErrorMessage(message: string): string {
   return ERROR_MESSAGE_TRANSLATIONS[message] ?? message
 }
 
-function extractErrorMessage(err: ApiError): string {
-  if (err instanceof AxiosError) {
+function extractErrorMessage(err: unknown): string {
+  if (!(err instanceof AxiosError) || !err.response) {
     return "网络请求失败，请检查网络后重试。"
   }
 
   // FastAPI 的错误体：HTTPException 是 string，422 校验错误是 {msg} 数组
-  const body = err.body as
+  const body = err.response.data as
     | { detail?: string | Array<{ msg: string }> }
     | undefined
   const errDetail = body?.detail
@@ -47,7 +46,7 @@ function extractErrorMessage(err: ApiError): string {
 
 export const handleError = function (
   this: (msg: string) => void,
-  err: ApiError,
+  err: unknown,
 ) {
   const errorMessage = extractErrorMessage(err)
   this(errorMessage)

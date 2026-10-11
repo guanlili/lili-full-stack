@@ -9,7 +9,6 @@ import axios from "axios"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { toast } from "sonner"
-import { ApiError } from "./client"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import { configureSession, expireSession } from "./lib/session"
@@ -22,12 +21,12 @@ const handleApiError = (error: Error) => {
   if (axios.isCancel(error)) return
   // 只在 401（token 无效/过期）时登出；403 是"已登录但权限不足"，
   // 一并登出会把正常用户误踢下线（例如访问一个无权限的资源）
-  if (error instanceof ApiError && error.status === 401) {
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
     expireSession()
     return
   }
 
-  if (error instanceof ApiError && error.status === 403) {
+  if (axios.isAxiosError(error) && error.response?.status === 403) {
     toast.error("没有权限执行此操作")
   } else {
     toast.error("请求失败，请稍后重试")
@@ -39,7 +38,7 @@ const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      if (error instanceof ApiError && error.status === 401) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         handleApiError(error)
       }
     },

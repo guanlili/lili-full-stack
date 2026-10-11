@@ -210,3 +210,10 @@ lili-full-stack/
 | 重置密码 token 一次性失效 | token 48 小时内可重复使用（改完密码不作废）。工具型项目风险低；高安全要求的项目可把 token 绑定当前密码 hash（密码一改即失效） |
 | 生产环境隐藏 `/docs`、`/redoc` | API 文档公开对内网工具是便利。正式上线面向公网的项目建议关闭（`ENVIRONMENT=production` 时设 `docs_url=None`）或在 Caddy 层加 basic auth |
 | Kubernetes / 多机编排 | 单服务器 docker compose 覆盖当前所有项目规模。规模到了再迁移，不预支复杂度 |
+
+### 依赖维护说明
+
+- 本地前端使用 Node.js 24，与 Docker 和 CI 一致；`npm test` 使用 Node 内置测试运行器，通过 `tsx` 加载生成客户端的 TypeScript 模块。
+- Python 默认使用官方 PyPI，锁文件与索引配置保持一致；需要镜像时可在本机配置，避免将镜像访问限制带入模板。
+- `frontend/package.json` 的 `js-yaml` override 用于修复客户端生成器间接锁定旧版本的问题。上游解除旧版本锁定后可移除，移除前运行 `npm audit` 和客户端生成验证。
+- 升级客户端生成器后运行 `npm run generate-client`，同步验证表单/JSON 序列化、路径/查询参数、Token 刷新和 403 错误；生成目录保持自动生成。

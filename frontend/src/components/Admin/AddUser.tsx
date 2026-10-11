@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserCreate, UsersService } from "@/client"
+import { type UserCreate, Users as UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -71,7 +71,9 @@ const AddUser = () => {
 
   const mutation = useMutation({
     mutationFn: (data: UserCreate) =>
-      UsersService.createUser({ requestBody: data }),
+      UsersService.createUser({ body: data, throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: () => {
       showSuccessToast("用户创建成功")
       form.reset()

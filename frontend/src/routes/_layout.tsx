@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
-import { AccessService } from "@/client"
+import { Access as AccessService } from "@/client"
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -20,7 +20,9 @@ export const Route = createFileRoute("/_layout")({
       })
     }
     if (location.pathname.replace(/\/$/, "") !== "/forbidden") {
-      const access = await AccessService.readAccess()
+      const access = await AccessService.readAccess({
+        throwOnError: true,
+      }).then((response) => response.data)
       if (!canAccessPath(access.pages, location.pathname)) {
         throw redirect({ to: "/forbidden" })
       }

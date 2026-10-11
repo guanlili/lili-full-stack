@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
 import {
-  type Body_login_login_access_token as AccessToken,
-  LoginService,
+  type BodyLoginLoginAccessToken as AccessToken,
+  Login as LoginService,
   type UserPublic,
   type UserRegister,
-  UsersService,
+  Users as UsersService,
 } from "@/client"
 import { clearSession, startSession } from "@/lib/session"
 import { handleError } from "@/utils"
@@ -23,13 +23,18 @@ const useAuth = () => {
 
   const { data: user } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
-    queryFn: UsersService.readUserMe,
+    queryFn: () =>
+      UsersService.readUserMe({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
     enabled: isLoggedIn(),
   })
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
-      UsersService.registerUser({ requestBody: data }),
+      UsersService.registerUser({ body: data, throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: () => {
       navigate({ to: "/login" })
     },
@@ -41,8 +46,9 @@ const useAuth = () => {
 
   const login = async (data: AccessToken) => {
     const response = await LoginService.loginAccessToken({
-      formData: data,
-    })
+      body: data,
+      throwOnError: true,
+    }).then((response) => response.data)
     startSession(response)
   }
 
@@ -64,7 +70,9 @@ const useAuth = () => {
   }
 
   const logoutAll = async () => {
-    await LoginService.logoutAll()
+    await LoginService.logoutAll({ throwOnError: true }).then(
+      (response) => response.data,
+    )
     logout()
   }
 

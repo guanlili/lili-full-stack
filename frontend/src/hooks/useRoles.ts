@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { RolesService } from "@/client"
+import { Roles as RolesService } from "@/client"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -8,11 +8,16 @@ export function useRoles() {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const query = useQuery({
     queryKey: ["roles"],
-    queryFn: RolesService.readRoles,
+    queryFn: () =>
+      RolesService.readRoles({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
   })
   const create = useMutation({
     mutationFn: (name: string) =>
-      RolesService.createRole({ requestBody: { name } }),
+      RolesService.createRole({ body: { name }, throwOnError: true }).then(
+        (response) => response.data,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
       showSuccessToast("角色已创建，请配置页面权限")
@@ -27,7 +32,11 @@ export function useRoles() {
       roleId: string
       permissions: string[]
     }) =>
-      RolesService.updatePermissions({ roleId, requestBody: { permissions } }),
+      RolesService.updatePermissions({
+        path: { role_id: roleId },
+        body: { permissions },
+        throwOnError: true,
+      }).then((response) => response.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
       queryClient.invalidateQueries({ queryKey: ["access"] })
@@ -36,7 +45,11 @@ export function useRoles() {
     onError: handleError.bind(showErrorToast),
   })
   const remove = useMutation({
-    mutationFn: (roleId: string) => RolesService.deleteRole({ roleId }),
+    mutationFn: (roleId: string) =>
+      RolesService.deleteRole({
+        path: { role_id: roleId },
+        throwOnError: true,
+      }).then((response) => response.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
       queryClient.invalidateQueries({ queryKey: ["user-roles"] })
@@ -53,15 +66,20 @@ export function useUserRoles(userId: string, enabled: boolean) {
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const query = useQuery({
     queryKey: ["user-roles", userId],
-    queryFn: () => RolesService.readUserRoles({ userId }),
+    queryFn: () =>
+      RolesService.readUserRoles({
+        path: { user_id: userId },
+        throwOnError: true,
+      }).then((response) => response.data),
     enabled,
   })
   const update = useMutation({
     mutationFn: (roleIds: string[]) =>
       RolesService.updateUserRoles({
-        userId,
-        requestBody: { role_ids: roleIds },
-      }),
+        path: { user_id: userId },
+        body: { role_ids: roleIds },
+        throwOnError: true,
+      }).then((response) => response.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles", userId] })
       queryClient.invalidateQueries({ queryKey: ["access"] })
