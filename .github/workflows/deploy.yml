@@ -54,6 +54,8 @@ jobs:
           fi
       - name: 模板完整性检查
         run: bash scripts/check-template.sh
+      - name: 初始化、权限与冒烟脚本回归
+        run: python3 -m unittest discover -s scripts -p "test_delivery.py"
       - name: 备份恢复校验
         run: python3 scripts/test_backup_restore.py --integration
       - name: 部署配置回归检查
@@ -153,6 +155,11 @@ jobs:
           APP_PORT: ${{ secrets.APP_PORT }}
           WORKERS: ${{ secrets.WORKERS || '1' }}
           USERS_OPEN_REGISTRATION: ${{ secrets.USERS_OPEN_REGISTRATION || 'false' }}
+          SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
+          SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
+          SMOKE_VISITOR_EMAIL: ${{ secrets.SMOKE_VISITOR_EMAIL }}
+          SMOKE_VISITOR_PASSWORD: ${{ secrets.SMOKE_VISITOR_PASSWORD }}
+          SMOKE_REQUIRE_AUTH: ${{ vars.SMOKE_REQUIRE_AUTH || 'false' }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
@@ -166,11 +173,15 @@ jobs:
           echo "::add-mask::$env_b64"
           echo "env_b64=$env_b64" >> "$GITHUB_OUTPUT"
           echo "path_b64=$(printf '%s' "$DEPLOY_PATH" | base64 | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          smoke_b64=$(python3 -c 'import os,json,base64; print(base64.b64encode(json.dumps({key: os.environ.get(key, "") for key in ("SMOKE_ADMIN_EMAIL", "SMOKE_ADMIN_PASSWORD", "SMOKE_VISITOR_EMAIL", "SMOKE_VISITOR_PASSWORD", "SMOKE_REQUIRE_AUTH")}).encode()).decode())')
+          echo "::add-mask::$smoke_b64"
+          echo "smoke_b64=$smoke_b64" >> "$GITHUB_OUTPUT"
           rm -f "$RUNNER_TEMP/deploy.env"
 
       - name: 服务器拉代码并重启服务
         uses: appleboy/ssh-action@v1.2.2
         env:
+          SMOKE_B64: ${{ steps.envfile.outputs.smoke_b64 }}
           ENV_B64: ${{ steps.envfile.outputs.env_b64 }}
           PATH_B64: ${{ steps.envfile.outputs.path_b64 }}
           DEPLOY_SHA: ${{ github.sha }}
@@ -180,7 +191,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 30m
-          envs: ENV_B64,PATH_B64,DEPLOY_SHA,DEPLOY_REPO
+          envs: ENV_B64,PATH_B64,DEPLOY_SHA,DEPLOY_REPO,SMOKE_B64
           script: |
             set -e
             umask 077
@@ -268,6 +279,8 @@ jobs:
               docker compose -f compose.yml logs backend --tail 50
               exit 1
             fi
+            echo "=== 部署后功能冒烟检查 ==="
+            printf '%s' "$SMOKE_B64" | base64 -d | python3 scripts/smoke_test.py "http://localhost:$app_port" --credentials-stdin
             echo "✅ 部署成功"
             docker compose -f compose.yml ps
 

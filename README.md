@@ -40,9 +40,8 @@ bash scripts/init-project.sh "项目显示名"
 脚本一次性完成：生成 `.env`（`SECRET_KEY`、数据库密码、管理员密码全部随机化）、
 统一改名（`PROJECT_NAME`、前端 `APP_NAME`、页面标题）、
 自动生成容器名前缀（`COMPOSE_PROJECT_NAME`，从项目名推导），并输出剩余待办清单。
-本地管理员账号会打印在结果里（也记录在 `.env`）。
-> 纯中文项目名会回退为 `my-project`，如果同一台服务器上有多个项目，
-> 请手动修改 `.env` 里的 `COMPOSE_PROJECT_NAME`（和部署时的 GitHub Secret），避免容器名冲突。
+本地密钥只写入权限为 `600` 的 `.env`，不会打印。
+可通过 `--slug`、`--brand`、`--port`、`--registration` 指定项目标识、品牌、生产端口和注册策略，详见文末「新项目一键初始化」。
 
 ### 第三步：更新项目文档
 
@@ -58,7 +57,7 @@ bash scripts/init-project.sh "项目显示名"
 历史版本的配置、文件和任务数据表保留用于升级兼容，不再提供对应接口或默认界面，不自动删除已有数据。
 新项目直接根据 `PROJECT_CONTEXT.md` 开发业务模块，不需要先清理示例表、路由、测试和生成客户端。
 
-同时确定注册方式：自助注册默认只在本地开启，生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关闭。
+同时确定注册方式：初始化命令默认关闭自助注册，可通过 `--registration open` 开启；生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关闭。
 如果项目采用“管理员建账号”模式，交付前删除注册页和登录页上的注册链接。
 
 ### 第五步：首次启动
@@ -217,3 +216,15 @@ lili-full-stack/
 - Python 默认使用官方 PyPI，锁文件与索引配置保持一致；需要镜像时可在本机配置，避免将镜像访问限制带入模板。
 - `frontend/package.json` 的 `js-yaml` override 用于修复客户端生成器间接锁定旧版本的问题。上游解除旧版本锁定后可移除，移除前运行 `npm audit` 和客户端生成验证。
 - 升级客户端生成器后运行 `npm run generate-client`，同步验证表单/JSON 序列化、路径/查询参数、Token 刷新和 403 错误；生成目录保持自动生成。
+
+### 新项目一键初始化
+
+在新复制的仓库中执行（不要在已有生产项目中重新初始化）：
+
+```bash
+bash scripts/init-project.sh "订单管理系统" --slug order-system --brand "订单工作台" --port 8085 --registration closed
+```
+
+命令同步项目显示名、前端品牌/标题、Compose 项目标识、生产映射端口、注册策略和项目上下文名称，生成权限为 `600` 的本地 `.env`，不输出任何密码。默认关闭注册，`--registration open` 可显式打开；纯中文名称会生成带摘要的 Compose 标识，部署到同一服务器时仍应显式选择唯一 `--slug`。`--port` 控制生产 Compose 的前端映射端口，本地 Vite 仍使用 5173。
+
+已有 `.env` 时命令直接拒绝覆盖，也不会读取已有密钥。生产配置始终使用独立的 GitHub Secrets；Logo/favicon 和业务上下文仍需按项目填写。

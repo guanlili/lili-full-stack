@@ -164,3 +164,24 @@ ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> && docke
 紧急回滚后仍需在仓库中执行 `git revert`，让远端历史与线上版本一致。
 
 代码回滚不会自动回滚 Alembic 迁移。对于删除列、修改类型等破坏性迁移，优先做前向修复，不要直接执行 `alembic downgrade`；操作前先备份数据库。
+
+## 部署冒烟检查
+
+部署流水线在就绪检查后，经服务器本机 nginx 执行 `scripts/smoke_test.py`：检查登录页应用入口、数据库就绪，以及未登录访问当前用户、访问权限和角色接口必须返回 401。任何失败都会使部署任务失败，且不会写入本次成功部署标记；不会自动回滚数据库或代码。
+
+需要完整认证检查时，管理员提前建立两个**专用冒烟账号**，在 GitHub Secrets 配置：
+
+- `SMOKE_ADMIN_EMAIL`、`SMOKE_ADMIN_PASSWORD`：专用管理员账号。
+- `SMOKE_VISITOR_EMAIL`、`SMOKE_VISITOR_PASSWORD`：非管理员账号，使用默认访客角色或明确配置的访客角色。
+
+把仓库 Actions Variable `SMOKE_REQUIRE_AUTH` 设为 `true`，可强制要求两组账号齐全。默认不配置时会明确输出跳过认证检查，不会把基础检查标成完整验收；账号只配一半时检查失败。
+
+认证检查覆盖登录、当前用户、角色管理的管理员/访客差异、用户列表的实际页面权限以及刷新后的访问。脚本不会创建用户、修改角色或业务数据，但会创建和轮换登录会话，最后注销该专用账号的全部会话，因此不要复用日常操作账号。认证信息通过掩码后的 base64 JSON 和标准输入传输，不写入生产 `.env` 或日志。base64 是传输编码，不是加密。
+
+本地可用环境变量传入专用测试账号后运行：
+
+```bash
+python3 scripts/smoke_test.py http://localhost:80 --require-auth
+```
+
+此检查验证 HTTP/API 行为，不替代浏览器交互、前端 JavaScript 执行与视觉验收。认证流程在 CI 中还会通过独立 `app_test` 的真实 API 测试，测试账号不进入生产。
