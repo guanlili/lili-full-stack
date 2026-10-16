@@ -100,24 +100,46 @@ def generate_new_account_email(email_to: str, username: str) -> EmailData:
     return EmailData(html_content=html_content, subject=subject)
 
 
-def generate_password_reset_token(email: str) -> str:
+@dataclass(frozen=True)
+class PasswordResetClaims:
+    email: str
+    token_version: int
+
+
+def generate_password_reset_token(email: str, token_version: int) -> str:
+    """Bind the link to the user's token_version so it stops working after any
+    password change, a completed reset, or logout-all."""
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
     now = datetime.now(UTC)
     expires = now + delta
     exp = expires.timestamp()
     encoded_jwt = jwt.encode(
-        {"exp": exp, "nbf": now, "sub": email},
+        {
+            "exp": exp,
+            "nbf": now,
+            "sub": email,
+            "ver": token_version,
+            "typ": security.PASSWORD_RESET_TOKEN_TYPE,
+        },
         settings.SECRET_KEY,
         algorithm=security.ALGORITHM,
     )
     return encoded_jwt
 
 
-def verify_password_reset_token(token: str) -> str | None:
+def verify_password_reset_token(token: str) -> PasswordResetClaims | None:
     try:
         decoded_token = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
         )
-        return str(decoded_token["sub"])
     except InvalidTokenError:
         return None
+    email = decoded_token.get("sub")
+    token_version = decoded_token.get("ver")
+    if (
+        decoded_token.get("typ") != security.PASSWORD_RESET_TOKEN_TYPE
+        or not isinstance(email, str)
+        or not isinstance(token_version, int)
+    ):
+        return None
+    return PasswordResetClaims(email=email, token_version=token_version)

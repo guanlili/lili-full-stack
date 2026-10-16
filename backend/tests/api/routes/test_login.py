@@ -1,15 +1,19 @@
+import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from threading import Barrier
 from unittest.mock import patch
 
+import jwt
 from fastapi.testclient import TestClient
 from pwdlib.hashers.bcrypt import BcryptHasher
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
+from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.crud import create_user
-from app.models import User, UserCreate
+from app.models import RefreshToken, User, UserCreate
 from app.utils import generate_password_reset_token
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
@@ -135,7 +139,7 @@ def test_reset_password(client: TestClient, db: Session) -> None:
         is_superuser=False,
     )
     user = create_user(session=db, user_create=user_create)
-    token = generate_password_reset_token(email=email)
+    token = generate_password_reset_token(email=email, token_version=user.token_version)
     headers = user_authentication_headers(client=client, email=email, password=password)
     data = {"new_password": new_password, "token": token}
 
@@ -271,7 +275,9 @@ def test_password_reset_revokes_persisted_sessions(
     client: TestClient, db: Session
 ) -> None:
     email, password = random_email(), random_lower_string()
-    create_user(session=db, user_create=UserCreate(email=email, password=password))
+    user = create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
     login = client.post(
         f"{settings.API_V1_STR}/login/access-token",
         data={"username": email, "password": password},
@@ -279,7 +285,9 @@ def test_password_reset_revokes_persisted_sessions(
     response = client.post(
         f"{settings.API_V1_STR}/reset-password/",
         json={
-            "token": generate_password_reset_token(email=email),
+            "token": generate_password_reset_token(
+                email=email, token_version=user.token_version
+            ),
             "new_password": random_lower_string(),
         },
     )
@@ -332,3 +340,148 @@ def test_admin_password_change_revokes_refresh_token(
         ).status_code
         == 401
     )
+
+
+def _bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_password_reset_token_is_not_an_access_token(
+    client: TestClient, db: Session
+) -> None:
+    user = create_user(
+        session=db,
+        user_create=UserCreate(email=random_email(), password=random_lower_string()),
+    )
+    reset_token = generate_password_reset_token(
+        email=user.email, token_version=user.token_version
+    )
+    r = client.post(
+        f"{settings.API_V1_STR}/login/test-token", headers=_bearer(reset_token)
+    )
+    assert r.status_code == 401
+    assert r.headers["WWW-Authenticate"] == "Bearer"
+
+
+def test_access_token_with_malformed_claims_returns_401(
+    client: TestClient, db: Session
+) -> None:
+    user = create_user(
+        session=db,
+        user_create=UserCreate(email=random_email(), password=random_lower_string()),
+    )
+    expires = datetime.now(UTC) + timedelta(minutes=5)
+    claim_sets = [
+        {"sub": "not-a-uuid", "ver": 0, "typ": security.ACCESS_TOKEN_TYPE},
+        {"sub": str(user.id), "ver": user.token_version},
+        {"sub": str(user.id), "typ": security.ACCESS_TOKEN_TYPE},
+    ]
+    for claims in claim_sets:
+        token = jwt.encode(
+            {"exp": expires, **claims},
+            settings.SECRET_KEY,
+            algorithm=security.ALGORITHM,
+        )
+        r = client.post(
+            f"{settings.API_V1_STR}/login/test-token", headers=_bearer(token)
+        )
+        assert r.status_code == 401, claims
+
+
+def test_access_token_cannot_reset_password(client: TestClient, db: Session) -> None:
+    user = create_user(
+        session=db,
+        user_create=UserCreate(email=random_email(), password=random_lower_string()),
+    )
+    access_token = security.create_access_token(
+        user.id, timedelta(minutes=5), token_version=user.token_version
+    )
+    r = client.post(
+        f"{settings.API_V1_STR}/reset-password/",
+        json={"token": access_token, "new_password": random_lower_string()},
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Invalid token"
+
+
+def test_password_reset_link_is_single_use(client: TestClient, db: Session) -> None:
+    user = create_user(
+        session=db,
+        user_create=UserCreate(email=random_email(), password=random_lower_string()),
+    )
+    token = generate_password_reset_token(
+        email=user.email, token_version=user.token_version
+    )
+    first = client.post(
+        f"{settings.API_V1_STR}/reset-password/",
+        json={"token": token, "new_password": random_lower_string()},
+    )
+    assert first.status_code == 200
+    reused = client.post(
+        f"{settings.API_V1_STR}/reset-password/",
+        json={"token": token, "new_password": random_lower_string()},
+    )
+    assert reused.status_code == 400
+    assert reused.json()["detail"] == "Invalid token"
+
+
+def test_password_reset_link_invalidated_by_password_change(
+    client: TestClient, db: Session
+) -> None:
+    email, password = random_email(), random_lower_string()
+    user = create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    token = generate_password_reset_token(email=email, token_version=user.token_version)
+    headers = user_authentication_headers(client=client, email=email, password=password)
+    changed = client.patch(
+        f"{settings.API_V1_STR}/users/me/password",
+        headers=headers,
+        json={"current_password": password, "new_password": random_lower_string()},
+    )
+    assert changed.status_code == 200
+    r = client.post(
+        f"{settings.API_V1_STR}/reset-password/",
+        json={"token": token, "new_password": random_lower_string()},
+    )
+    assert r.status_code == 400
+
+
+def test_password_recovery_html_content_supports_non_ascii_project_name(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    with patch("app.core.config.settings.PROJECT_NAME", "测试项目"):
+        r = client.post(
+            f"{settings.API_V1_STR}/password-recovery-html-content/{settings.FIRST_SUPERUSER}",
+            headers=superuser_token_headers,
+        )
+    assert r.status_code == 200
+    assert "测试项目" in r.text
+
+
+def test_login_prunes_expired_refresh_tokens(client: TestClient, db: Session) -> None:
+    email, password = random_email(), random_lower_string()
+    user = create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    expired_id = uuid.uuid4()
+    db.add(
+        RefreshToken(
+            id=expired_id,
+            token_hash=uuid.uuid4().hex,
+            user_id=user.id,
+            expires_at=datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    db.commit()
+    r = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    )
+    assert r.status_code == 200
+    db.expire_all()
+    remaining = db.exec(
+        select(RefreshToken).where(col(RefreshToken.user_id) == user.id)
+    ).all()
+    assert [token.id for token in remaining if token.id == expired_id] == []
+    assert len(remaining) == 1
