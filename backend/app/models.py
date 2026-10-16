@@ -95,8 +95,9 @@ class RefreshTokenRequest(SQLModel):
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
-    sub: str | None = None
-    ver: int | None = None
+    sub: uuid.UUID
+    ver: int
+    typ: str
 
 
 class NewPassword(SQLModel):

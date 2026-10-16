@@ -13,6 +13,17 @@
 5. 阅读每批更新的数据库/API兼容性说明；需要时生成迁移和客户端，并执行客户业务验收与模板回归。
 6. 通过 PR 评审和 CI 后发布，记录采用版本及未采用的改进。
 
+## 2026.10.16 批次
+
+| 改进 | 主要文件 | 同步注意事项 |
+|------|----------|--------------|
+| JWT 类型与重置链接一次性 | `backend/app/core/security.py`、`api/deps.py`、`utils.py`、`api/routes/login.py`、`models.py` | 三处签发/校验需一起同步；项目自建的其他 JWT 也应带上独立的 `typ` |
+| 请求日志与 Request ID | `backend/app/main.py` | 依赖日志中原始路径的排查脚本改为匹配路由模板 |
+| 管理员自我保护、Token 清理 | `backend/app/api/routes/users.py`、`core/sessions.py` | 项目若有其他删除用户的入口，同样调用 `delete_user_refresh_tokens` |
+| 连接池、Sentry 采样 | `backend/app/core/db.py`、`main.py` | 需要全量追踪的项目调整 `SENTRY_TRACES_SAMPLE_RATE` |
+
+本批无数据库迁移和 API 契约变更。升级后旧 Access Token 由前端自动刷新替换，旧重置密码链接需要重新申请。
+
 ## 2026.10.10 批次
 
 | 改进 | 主要文件 | 同步注意事项 |

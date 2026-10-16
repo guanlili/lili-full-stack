@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from app import crud
 from app.core.config import settings
 from app.core.security import verify_password
-from app.models import User, UserCreate
+from app.models import RefreshToken, User, UserCreate
 from tests.utils.user import create_random_user
 from tests.utils.utils import random_email, random_lower_string
 
@@ -539,3 +539,47 @@ def test_delete_user_without_privileges(
     )
     assert r.status_code == 403
     assert r.json()["detail"] == "The user doesn't have enough privileges"
+
+
+def test_superuser_cannot_demote_or_deactivate_self(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    me = client.get(
+        f"{settings.API_V1_STR}/users/me", headers=superuser_token_headers
+    ).json()
+    for update in ({"is_superuser": False}, {"is_active": False}):
+        r = client.patch(
+            f"{settings.API_V1_STR}/users/{me['id']}",
+            headers=superuser_token_headers,
+            json=update,
+        )
+        assert r.status_code == 403, update
+    still_admin = client.get(
+        f"{settings.API_V1_STR}/users/me", headers=superuser_token_headers
+    ).json()
+    assert still_admin["is_superuser"] is True
+    assert still_admin["is_active"] is True
+
+
+def test_delete_user_removes_refresh_tokens(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    email, password = random_email(), random_lower_string()
+    user = crud.create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    user_id = user.id
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    )
+    assert login.status_code == 200
+    r = client.delete(
+        f"{settings.API_V1_STR}/users/{user_id}", headers=superuser_token_headers
+    )
+    assert r.status_code == 200
+    db.expire_all()
+    assert (
+        db.exec(select(RefreshToken).where(RefreshToken.user_id == user_id)).first()
+        is None
+    )

@@ -17,13 +17,22 @@ password_hash = PasswordHash(
 
 
 ALGORITHM = "HS256"
+# Access and password-reset JWTs share SECRET_KEY; the type claim keeps one
+# from being accepted where the other is expected.
+ACCESS_TOKEN_TYPE = "access"
+PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 
 
 def create_access_token(
     subject: str | Any, expires_delta: timedelta, token_version: int = 0
 ) -> str:
     expire = datetime.now(UTC) + expires_delta
-    to_encode = {"exp": expire, "sub": str(subject), "ver": token_version}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "ver": token_version,
+        "typ": ACCESS_TOKEN_TYPE,
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 

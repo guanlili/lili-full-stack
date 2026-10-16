@@ -27,6 +27,15 @@ SessionDep = Annotated[Session, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 
+def _unauthorized(detail: str) -> HTTPException:
+    # 401 = token 无效/过期（前端据此登出）；403 留给"已登录但权限不足"，二者不可混用
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
     try:
         payload = jwt.decode(
@@ -34,27 +43,16 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
         )
         token_data = TokenPayload(**payload)
     except InvalidTokenError, ValidationError:
-        # 401 = token 无效/过期（前端据此登出）；403 留给"已登录但权限不足"，二者不可混用
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _unauthorized("Could not validate credentials")
+    if token_data.typ != security.ACCESS_TOKEN_TYPE:
+        raise _unauthorized("Could not validate credentials")
     user = session.get(User, token_data.sub)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _unauthorized("User not found")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
-    if token_data.ver is not None and token_data.ver != user.token_version:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if token_data.ver != user.token_version:
+        raise _unauthorized("Session has been revoked")
     return user
 
 

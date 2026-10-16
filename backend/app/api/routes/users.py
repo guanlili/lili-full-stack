@@ -14,7 +14,7 @@ from app.api.deps import (
 from app.core.audit import record_audit
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
-from app.core.sessions import revoke_user_refresh_tokens
+from app.core.sessions import delete_user_refresh_tokens, revoke_user_refresh_tokens
 from app.models import (
     Message,
     UpdatePassword,
@@ -173,6 +173,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.exec(delete(UserRole).where(col(UserRole.user_id) == current_user.id))
+    delete_user_refresh_tokens(session=session, user_id=current_user.id)
     session.delete(current_user)
     session.commit()
     return Message(message="User deleted successfully")
@@ -241,6 +242,13 @@ def update_user(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
+    if db_user.id == current_user.id and (
+        user_in.is_superuser is False or user_in.is_active is False
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Administrators cannot revoke their own admin access or deactivate themselves",
+        )
     if user_in.email:
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
@@ -275,6 +283,7 @@ def delete_user(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.exec(delete(UserRole).where(col(UserRole.user_id) == user.id))
+    delete_user_refresh_tokens(session=session, user_id=user.id)
     session.delete(user)
     session.commit()
     record_audit(

@@ -5,7 +5,9 @@ from app.core.config import settings
 from app.core.permissions import seed_permissions
 from app.models import User, UserCreate
 
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+# pre_ping replaces pooled connections dropped by a database restart instead of
+# failing the first request that reuses them.
+engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI), pool_pre_ping=True)
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB
