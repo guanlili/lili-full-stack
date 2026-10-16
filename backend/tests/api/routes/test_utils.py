@@ -1,12 +1,15 @@
 import asyncio
+import logging
 import struct
 import time
+import uuid
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
+from tests.utils.utils import random_email
 
 
 def test_health_check_lightweight(client: TestClient) -> None:
@@ -132,3 +135,32 @@ def test_ready_check_silent_tcp_peer(after_handshake: bool) -> None:
             await server.wait_closed()
 
     asyncio.run(scenario())
+
+
+def test_request_id_echoes_safe_client_value(client: TestClient) -> None:
+    r = client.get(
+        f"{settings.API_V1_STR}/utils/health-check/",
+        headers={"X-Request-ID": "trace-123_abc.def"},
+    )
+    assert r.headers["X-Request-ID"] == "trace-123_abc.def"
+
+
+def test_request_id_replaces_unsafe_client_value(client: TestClient) -> None:
+    for unsafe in ("a" * 65, "bad id\twith spaces"):
+        r = client.get(
+            f"{settings.API_V1_STR}/utils/health-check/",
+            headers={"X-Request-ID": unsafe},
+        )
+        assert r.headers["X-Request-ID"] != unsafe
+        uuid.UUID(r.headers["X-Request-ID"])
+
+
+def test_request_log_omits_email_path_parameter(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    email = random_email()
+    with caplog.at_level(logging.INFO, logger="app.main"):
+        client.post(f"{settings.API_V1_STR}/password-recovery/{email}")
+    request_logs = [r.getMessage() for r in caplog.records if r.name == "app.main"]
+    assert any("/password-recovery/{email}" in line for line in request_logs)
+    assert all(email not in line for line in request_logs)
