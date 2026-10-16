@@ -18,6 +18,10 @@ required_files=(
   "docs/module-development.md"
   "docs/template-upgrades.md"
   "CHANGELOG.md"
+  "scripts/init_project.py"
+  "scripts/check_page_permissions.py"
+  "scripts/smoke_test.py"
+  "scripts/test_delivery.py"
   "scripts/backup_restore.py"
   "scripts/test_backup_restore.py"
   "frontend/package.json"
@@ -49,5 +53,7 @@ COMPOSE_ENV_FILE=.env.example docker compose --env-file .env.example -f compose.
 # OpenAPI 生成器会在 src/client/ 的空行保留缩进空格；该目录由生成器管理，
 # 其契约一致性由 CI 的 openapi-ts 漂移检查负责。手写源码仍全部检查。
 git diff --check -- ':!frontend/src/client/'
+
+python3 scripts/check_page_permissions.py
 
 echo "✅ 模板完整性检查通过"
