@@ -98,3 +98,19 @@ npm run build
 ## 技术规范
 
 详见 `AI_RULES.md`。客户项目的业务约定详见 `PROJECT_CONTEXT.md`。
+
+## 项目管理（gh-pm，记账硬性规范）
+
+本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#__PM_PROJECT__`（gh-pm skill 管理，工具与方法论在本机 ~/gh-pm）。最终交付客户：**项目管理表（xlsx，AI 记录与导出）+ 软件部署包**。
+
+**硬性纪律：任何 AI 会话完成了一个可交付单元（需求/缺陷/修复/交付线/文档），结束会话前必须完成记账。不可跳过、不可"下次一起补"——没记账的工作在验收时等于没做。**
+
+- 一条 issue = 一个可交付单元，正文四段：来源/描述/交付物/工时；labels = 类型 label + `轮次:<轮次名>` label
+- 7 字段：Status（键名英文）/ 类型 / 工时(h) / 开始 / 结束 / 来源（甲方/内部）/ 交付轮次
+- commit message 末尾带 `(#N)` 挂 issue；工时统一 AI 评估口径（commit 密度，约 8h/天，从宽）
+- 新轮次首条 issue 前：追加轮次选项后立即 `python3 ~/gh-pm/reconcile.py --from-labels ...` 重建（选项重交会清值）
+- **issue 是唯一工作真相源**：字段与 README 汇总均为派生视图，可随时 reconcile 重建
+- 验收导出：`python3 ~/gh-pm/export-timesheet.py --project __PM_PROJECT__ [--round 轮次] [--customer]`
+- 完整协议与坑清单见 ~/gh-pm/SKILL.md（gh-pm skill）
+
+（运行 `bash scripts/init-project.sh` 时若本机装有 gh-pm，会自动执行 `~/gh-pm/new-project.sh --local .` 把本节占位符替换为真实 Project 编号）

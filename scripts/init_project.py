@@ -100,6 +100,20 @@ def main() -> None:
     print(
         "接下来填写 PROJECT_CONTEXT.md、替换 Logo/favicon，再运行 docker compose up --build。"
     )
+    # gh-pm 项目管理自动激活（零输入）：本机装有 gh-pm skill 时执行，否则仅提示
+    import os
+    import shutil
+    pm_script = os.path.expanduser("~/gh-pm/new-project.sh")
+    origin = subprocess.run(
+        ["git", "remote", "get-url", "origin"], capture_output=True, text=True
+    ).stdout.strip()
+    m = re.search(r"[:/]([^/:]+/[^/.]+)(?:\.git)?$", origin) if origin else None
+    if os.path.isfile(pm_script) and m and shutil.which("gh"):
+        print("检测到 gh-pm，自动接入项目管理（建 Project + 激活占位符）...")
+        code = subprocess.run(["bash", pm_script, m.group(1), "--local", ROOT]).returncode
+        print("gh-pm 接入完成" if code == 0 else f"gh-pm 接入失败（exit {code}），可稍后手动运行：bash {pm_script} {m.group(1)} --local {ROOT}")
+    else:
+        print("提示：安装 gh-pm 可自动记账与出验收表 → git clone git@github.com:guanlili/gh-pm.git ~/gh-pm")
 
 
 if __name__ == "__main__":
