@@ -103,7 +103,7 @@ def main() -> None:
     # gh-pm 项目管理自动激活（零输入）：本机装有 gh-pm skill 时执行，否则仅提示
     import os
     import shutil
-    pm_script = os.path.expanduser("~/gh-pm/new-project.sh")
+    pm_script = os.path.expanduser("~/gh-pm/scripts/new-project.sh")
     origin = subprocess.run(
         ["git", "remote", "get-url", "origin"], capture_output=True, text=True
     ).stdout.strip()
