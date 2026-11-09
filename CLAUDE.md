@@ -99,9 +99,9 @@ npm run build
 
 详见 `AI_RULES.md`。客户项目的业务约定详见 `PROJECT_CONTEXT.md`。
 
-## 项目管理（gh-pm，记账硬性规范）
+## 项目管理（devledger，记账硬性规范）
 
-本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#__PM_PROJECT__`（gh-pm skill，工具与方法论在本机 ~/gh-pm）。
+本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#__PM_PROJECT__`（devledger skill，工具与方法论在本机 ~/devledger）。
 
 **硬性纪律：任何 AI 会话完成了一个可交付单元（需求/缺陷/修复/交付线/文档），结束会话前必须完成记账三步——没记账的工作等于没做。**
 
@@ -109,5 +109,5 @@ npm run build
 2. 按模板建 issue（来源[含原话]/描述[为什么·否决方案·做了什么]/交付物/验证/工时，决策上下文记录时写全），关闭之，`gh project item-add __PM_PROJECT__ --owner "@me" --url <issue url>`
 3. 设 5 字段：类型 / 来源（甲方/内部）/ 工时(h)（AI 评估，从宽，依据进 issue）/ 开始 / 结束；Status=已完成
 
-**issue 是唯一工作真相源**。已知坑与扩展工具（验收导出/对账）见 ~/gh-pm/SKILL.md。
-（运行 `bash scripts/init-project.sh` 时若本机装有 gh-pm，会自动执行 `~/gh-pm/new-project.sh --local .` 替换本节占位符）
+**issue 是唯一工作真相源**。已知坑与扩展工具（验收导出/对账）见 ~/devledger/SKILL.md。
+（运行 `bash scripts/init-project.sh` 时若本机装有 devledger，会自动执行 `~/devledger/scripts/new-project.sh --local .` 替换本节占位符）
