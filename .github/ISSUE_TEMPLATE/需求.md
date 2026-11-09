@@ -36,6 +36,5 @@ assignees:
 
 <!--
 并入 Project #__PM_PROJECT__ 时补字段：类型 / 来源 / 工时(h) / 开始 / 结束
-正文末尾必须加一行执行归因（记录时打点，事后不可补）：
-执行：<Agent 标识>（如 ZCode/GLM-4.6、Claude Code/Sonnet）· 会话日期
+（归因按 git 账户制：共享账号下的多 Agent 不区分；数字员工将来开独立 git 账号，author/assignee 即天然归因）
 -->
