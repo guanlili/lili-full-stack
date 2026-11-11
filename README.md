@@ -2,6 +2,15 @@
 
 guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) 精简定制，面向 AI 驱动的外包项目快速交付。
 
+| 项 | 内容 |
+|------|------|
+| 维护 | guanlili（李梨团队） |
+| 定位 | AI 驱动的外包项目快速交付模板（Use this template，不是 Fork） |
+| 基座 | [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) 精简定制 |
+| 文档导航 | [CLAUDE.md](CLAUDE.md) 开发流程 · [AI_RULES.md](AI_RULES.md) 编码与安全规范 · [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) 项目上下文 · [CHANGELOG.md](CHANGELOG.md) 模板版本 |
+
+![开箱工作台](docs/screenshots/dashboard.png)
+
 > **AI 助手请注意**：本仓库是模板仓库，不是具体项目。模板级开发流程见 `CLAUDE.md`，具体项目的业务背景、角色权限和数据模型见 `PROJECT_CONTEXT.md`。
 
 ---
@@ -20,6 +29,33 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 | 代码规范 | Ruff + ty（后端）/ Biome（前端）|
 | 容器 | Docker Compose（nginx 内置 /api 代理，无 Traefik）|
 | CI/CD | GitHub Actions：lint + 测试通过后 → server-side checkout + docker compose up |
+
+---
+
+## 开箱基线
+
+克隆即得的能力——模板只保留这些，其余（文件、通用配置、导入导出、任务系统）由具体项目按需实现：
+
+| 模块 | 内容 |
+|------|------|
+| 认证与会话 | JWT 登录、Access/Refresh Token 轮换、邮件找回密码（Mailcatcher 本地收信） |
+| 用户管理 | 用户 CRUD、可配置角色与页面权限、自助注册（默认关闭） |
+| 个人设置 | 修改资料与密码 |
+| 内部审计 | 关键操作留痕 |
+| 工程能力 | 前后端测试、CI（lint + 测试）、Docker 部署、备份恢复 |
+
+历史版本的配置、文件和任务数据表保留用于升级兼容，不再提供对应接口或默认界面，不自动删除已有数据。
+
+<details>
+<summary>基线界面截图（点击展开）</summary>
+
+**登录页（品牌区可按 --brand 定制）**
+![登录页](docs/screenshots/login.png)
+
+**用户管理（角色权限、审计同款风格）**
+![用户管理](docs/screenshots/user-management.png)
+
+</details>
 
 ---
 
@@ -52,10 +88,7 @@ bash scripts/init-project.sh "项目显示名"
 
 ### 第四步：确认项目基线
 
-模板只保留认证与会话、密码找回、用户管理、可配置角色与页面权限、个人设置、内部审计和基础布局，以及测试、部署和备份恢复能力。文件、通用配置、导入导出和任务系统由具体项目按需实现。
-
-历史版本的配置、文件和任务数据表保留用于升级兼容，不再提供对应接口或默认界面，不自动删除已有数据。
-新项目直接根据 `PROJECT_CONTEXT.md` 开发业务模块，不需要先清理示例表、路由、测试和生成客户端。
+基线能力见上文「开箱基线」。新项目直接根据 `PROJECT_CONTEXT.md` 开发业务模块，不需要先清理示例表、路由、测试和生成客户端。
 
 同时确定注册方式：初始化命令默认关闭自助注册，可通过 `--registration open` 开启；生产由可选 Secret `USERS_OPEN_REGISTRATION` 控制，默认关闭。
 如果项目采用“管理员建账号”模式，交付前删除注册页和登录页上的注册链接。
@@ -74,6 +107,8 @@ docker compose up --build
 
 默认管理员账号见 `.env` 中的 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`。
 
+冒烟检查（全部通过 = 基线就绪）：浏览器打开 http://localhost:5173 用管理员账号登录进 dashboard；http://localhost:8000/docs 可见 API 文档。
+
 ---
 
 ## 本地开发
@@ -87,6 +122,10 @@ docker compose watch
 
 # 停止
 docker compose down
+
+# 测试（与 CI 同口径）
+cd backend && uv run bash scripts/tests-start.sh   # 后端（独立测试库 app_test）
+cd frontend && npm test                             # 前端（Node 内置测试运行器）
 ```
 
 本地开发时前端跑的是 vite dev server（5173 端口，支持热更新），生产镜像才是 nginx 静态托管。
@@ -126,7 +165,6 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 （docker compose、npm run、后端检查、git 只读、gh 查看 CI 等）已预授权，克隆即用。
 涉及提交、推送、依赖锁文件和任意脚本执行的命令仍会请求确认；个人偏好写在
 `.claude/settings.local.json`（已被 gitignore，不入库）。
-个人偏好写在 `.claude/settings.local.json`（已被 gitignore，不入库）。
 
 ---
 
