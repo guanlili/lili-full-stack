@@ -87,7 +87,7 @@ bash scripts/init-project.sh "项目显示名"
 - `PROJECT_CONTEXT.md` — 写入该项目的业务背景、角色权限、数据模型和特殊约定（AI 开发前必须填写）
 - `CLAUDE.md` — 只有项目开发流程发生变化时才修改，模板级流程不要覆盖
 - `AI_RULES.md` — 只有项目确实有额外的编码、安全或部署规范时才追加
-- `README.md` — 改为项目自己的说明
+- `README.md` — 按 [docs/readme-template.md](docs/readme-template.md) 骨架改写（项目信息表必填：对接人/账本/在线平台）
 
 ### 第四步：确认项目基线
 
@@ -141,7 +141,11 @@ cd frontend && npm test                             # 前端（Node 内置测试
 前端代码检查使用 `npm run lint`，需要自动格式化时使用 `npm run lint:fix`。
 `npm run lint` 只检查，不会修改工作区。
 
-交付前可运行 `bash scripts/check-template.sh`，检查模板文件、脚本语法、Compose 配置和示例残留。
+交付前三件套：
+
+1. `bash scripts/check-template.sh` — 模板文件、脚本语法、Compose 配置、示例残留与 **README 项目化**检查
+2. README 截图按当前界面更新（hero 图 + 主要界面，见 [docs/readme-template.md](docs/readme-template.md)）
+3. 导出验收表（装有 devledger 时）：`python3 ~/.agents/skills/devledger/scripts/export-timesheet.py --project <Project编号>`
 
 ---
 

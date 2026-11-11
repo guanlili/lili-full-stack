@@ -103,7 +103,18 @@ def main() -> None:
     # devledger 项目管理自动激活（零输入）：本机装有 devledger skill 时执行，否则仅提示
     import os
     import shutil
-    pm_script = os.path.expanduser("~/devledger/scripts/new-project.sh")
+    # 标准安装路径优先，~/devledger 兼容旧安装
+    pm_script = next(
+        (
+            p
+            for p in (
+                os.path.expanduser("~/.agents/skills/devledger/scripts/new-project.sh"),
+                os.path.expanduser("~/devledger/scripts/new-project.sh"),
+            )
+            if os.path.isfile(p)
+        ),
+        None,
+    )
     origin = subprocess.run(
         ["git", "remote", "get-url", "origin"], capture_output=True, text=True
     ).stdout.strip()
@@ -113,7 +124,7 @@ def main() -> None:
         code = subprocess.run(["bash", pm_script, m.group(1), "--local", ROOT]).returncode
         print("devledger 接入完成" if code == 0 else f"devledger 接入失败（exit {code}），可稍后手动运行：bash {pm_script} {m.group(1)} --local {ROOT}")
     else:
-        print("提示：安装 devledger 可自动记账与出验收表 → git clone git@github.com:guanlili/devledger.git ~/devledger")
+        print("提示：安装 devledger 可自动记账与出验收表 → git clone git@github.com:guanlili/devledger.git ~/.agents/skills/devledger")
 
 
 if __name__ == "__main__":

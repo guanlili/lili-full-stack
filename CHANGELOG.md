@@ -2,7 +2,17 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
-## 2026.10.16 — 认证加固
+## 2026.11.11 — README 项目化标准与 devledger 路径修复
+
+- 修复 `init_project.py` 检测 devledger 只认 `~/devledger` 旧路径的问题：改为 `~/.agents/skills/devledger`（标准安装路径）优先、旧路径兜底，安装提示同步更新；此前走标准安装的机器上自动接入静默失效。
+- `CLAUDE.md` 中三处 `~/devledger` 引用统一为 `~/.agents/skills/devledger`。
+- 新增 `docs/readme-template.md`：项目 README 骨架（一句定位 / 📌 项目信息表必填：对接人可多行 / 截图 / 双路径本地开发 / 阶段叙事版本史），「开启新项目」第三步引用。
+- `check-template.sh` 新增 README 项目化检查：新项目 README 仍是模板原文（含「本仓库是模板仓库」标记）则交付检查失败，模板本体按 remote 豁免。
+- README 补强：项目信息表（维护/定位/基座/项目管理 devledger/许可）、开箱基线小节、界面截图、冒烟检查、与 CI 同口径的测试命令、交付三件套；修复重复段落。
+
+兼容性：已有项目无需动作；若本机 devledger 装在 `~/devledger` 继续可用，建议逐步迁移到标准路径。
+
+## 2026.10.16 — 认证加固## 2026.10.16 — 认证加固
 
 - JWT 增加 `typ` 类型声明：密码重置链接不能当 Access Token 使用，Access Token 也不能用于重置密码。缺少 `typ`/`ver` 或 `sub` 不是 UUID 的令牌统一返回 401（此前部分情况返回 500）。
 - 密码重置链接绑定 `token_version`，成功重置、修改密码或“退出所有设备”后旧链接立即失效；同一链接并发提交只会成功一次。

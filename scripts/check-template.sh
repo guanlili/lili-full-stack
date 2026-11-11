@@ -16,6 +16,7 @@ required_files=(
   "compose.override.yml"
   "docs/deployment.md"
   "docs/module-development.md"
+  "docs/readme-template.md"
   "docs/template-upgrades.md"
   "CHANGELOG.md"
   "scripts/init_project.py"
@@ -38,6 +39,15 @@ done
 if ! git check-ignore -q .env; then
   echo "❌ .env 未被 .gitignore 忽略，禁止把本地配置带入提交。" >&2
   exit 1
+fi
+
+# README 项目化检查：新项目交付前必须改写 README（模板本体按 remote 豁免）
+ORIGIN_URL="$(git remote get-url origin 2>/dev/null || echo "")"
+if ! echo "${ORIGIN_URL}" | grep -q "lili-full-stack"; then
+  if grep -q "本仓库是模板仓库" README.md 2>/dev/null; then
+    echo "❌ README 仍是模板原文。请按 docs/readme-template.md 改写（项目信息表必填：对接人/账本/在线平台）。" >&2
+    exit 1
+  fi
 fi
 
 for script in scripts/*.sh backend/scripts/*.sh frontend/scripts/*.sh; do
