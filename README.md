@@ -7,7 +7,9 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 | 维护 | guanlili（李梨团队） |
 | 定位 | AI 驱动的外包项目快速交付模板（Use this template，不是 Fork） |
 | 基座 | [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) 精简定制 |
-| 文档导航 | [CLAUDE.md](CLAUDE.md) 开发流程 · [AI_RULES.md](AI_RULES.md) 编码与安全规范 · [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) 项目上下文 · [CHANGELOG.md](CHANGELOG.md) 模板版本 |
+| 项目管理 | [devledger](https://github.com/guanlili/devledger)——初始化新项目时自动接入：GitHub Project 账本 + AI 会话交付自动记账 |
+| 许可 | MIT（保留上游版权声明） |
+| 文档导航 | [CLAUDE.md](CLAUDE.md) 开发流程 · [AGENTS.md](AGENTS.md) AI 工具通用入口 · [AI_RULES.md](AI_RULES.md) 编码与安全规范 · [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) 项目上下文 · [CHANGELOG.md](CHANGELOG.md) 模板版本 |
 
 ![开箱工作台](docs/screenshots/dashboard.png)
 
@@ -29,6 +31,7 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 | 代码规范 | Ruff + ty（后端）/ Biome（前端）|
 | 容器 | Docker Compose（nginx 内置 /api 代理，无 Traefik）|
 | CI/CD | GitHub Actions：lint + 测试通过后 → server-side checkout + docker compose up |
+| 项目管理 | [devledger](https://github.com/guanlili/devledger)：GitHub Project 账本，AI 会话每交付一个单元自动记 issue 与工时 |
 
 ---
 
