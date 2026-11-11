@@ -7,6 +7,7 @@
 - 修复 `init_project.py` 检测 devledger 只认 `~/devledger` 旧路径的问题：改为 `~/.agents/skills/devledger`（标准安装路径）优先、旧路径兜底，安装提示同步更新；此前走标准安装的机器上自动接入静默失效。
 - `CLAUDE.md` 中三处 `~/devledger` 引用统一为 `~/.agents/skills/devledger`。
 - 新增 `docs/readme-template.md`：项目 README 骨架（一句定位 / 📌 项目信息表必填：对接人可多行 / 截图 / 双路径本地开发 / 阶段叙事版本史），「开启新项目」第三步引用。
+- 新增 Claude 命令 `/init-project`：AI 一轮提问收集项目名/对接人/端口等 → 一次成参执行初始化 → 自动完成 PROJECT_CONTEXT 填写、README 项目化、AGENTS.md 对接人行与冒烟验证，用户主动输入降到「回答一轮问题」。
 - `check-template.sh` 新增 README 项目化检查：新项目 README 仍是模板原文（含「本仓库是模板仓库」标记）则交付检查失败，模板本体按 remote 豁免。
 - README 补强：项目信息表（维护/定位/基座/项目管理 devledger/许可）、开箱基线小节、界面截图、冒烟检查、与 CI 同口径的测试命令、交付三件套；修复重复段落。
 
