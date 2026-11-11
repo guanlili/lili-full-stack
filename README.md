@@ -76,6 +76,8 @@ cd <新项目名>
 bash scripts/init-project.sh "项目显示名"
 ```
 
+> 在 Claude Code 里直接用 `/init-project`：AI 会一轮提问收集项目名、对接人、端口等信息并完成初始化与全部后续待办，无需手工拼参数。
+
 脚本一次性完成：生成 `.env`（`SECRET_KEY`、数据库密码、管理员密码全部随机化）、
 统一改名（`PROJECT_NAME`、前端 `APP_NAME`、页面标题）、
 自动生成容器名前缀（`COMPOSE_PROJECT_NAME`，从项目名推导），并输出剩余待办清单。
@@ -159,6 +161,7 @@ cd frontend && npm test                             # 前端（Node 内置测试
 | `/migration <描述>` | 生成并应用 Alembic 数据库迁移 |
 | `/generate-client` | 重新生成前端 API 客户端 |
 | `/upgrade-deps` | 升级所有依赖包（uv + npm）|
+| `/init-project` | 新项目初始化：AI 一轮提问收集信息 → 跑 init 脚本 → 填 PROJECT_CONTEXT、项目化 README、冒烟验证 |
 
 示例：
 
