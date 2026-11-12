@@ -1,0 +1,40 @@
+import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query"
+import axios from "axios"
+import { toast } from "sonner"
+import { expireSession } from "@/lib/session"
+
+const handleApiError = (error: Error) => {
+  if (axios.isCancel(error)) return
+  // 只在 401（token 无效/过期）时登出；403 是"已登录但权限不足"，
+  // 一并登出会把正常用户误踢下线（例如访问一个无权限的资源）
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
+    expireSession()
+    return
+  }
+
+  if (axios.isAxiosError(error) && error.response?.status === 403) {
+    toast.error("没有权限执行此操作")
+  } else {
+    toast.error("请求失败，请稍后重试")
+  }
+}
+
+export const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: handleApiError,
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        handleApiError(error)
+      }
+    },
+  }),
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+})

@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
-import { Access as AccessService } from "@/client"
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -8,8 +7,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { accessQueryOptions } from "@/hooks/useAccess"
 import { isLoggedIn } from "@/hooks/useAuth"
 import { canAccessPath } from "@/lib/access"
+import { queryClient } from "@/lib/queryClient"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -20,9 +21,8 @@ export const Route = createFileRoute("/_layout")({
       })
     }
     if (location.pathname.replace(/\/$/, "") !== "/forbidden") {
-      const access = await AccessService.readAccess({
-        throwOnError: true,
-      }).then((response) => response.data)
+      // 复用 ["access"] 查询缓存（staleTime 内不重复请求），与 useAccess 同源
+      const access = await queryClient.ensureQueryData(accessQueryOptions)
       if (!canAccessPath(access.pages, location.pathname)) {
         throw redirect({ to: "/forbidden" })
       }
