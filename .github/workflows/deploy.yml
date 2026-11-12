@@ -124,9 +124,53 @@ jobs:
             exit 1
           fi
 
+  build-images:
+    name: 构建并推送镜像（GHCR）
+    # 服务器现场构建在大陆网络下不可行（uv --frozen 按 lock 直链下载 files.pythonhosted.org，
+    # 镜像源不生效，见 https://github.com/astral-sh/uv/issues/19625），
+    # 改为 CI 构建、服务器只 pull（拉取经 GHCR_PROXY 代理，Secret 可覆盖，默认 daocloud）。
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # ghcr 要求小写；模板复用时 owner 含大写需自行转换
+      IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 构建并推送 backend 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/lili-full-stack-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: 构建并推送 frontend 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/lili-full-stack-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: 部署到服务器
-    needs: [backend, frontend]
+    needs: [backend, frontend, build-images]
     # PR 只跑检查不部署；push 事件本身已限定 master 分支
     if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # 同一生产环境互斥；过期提交在服务器持锁阶段跳过，不假设排队顺序。
@@ -134,6 +178,10 @@ jobs:
       group: production-deploy
       cancel-in-progress: false
     runs-on: ubuntu-latest
+    env:
+      # 大陆服务器直连 ghcr.io 会超时；默认走 daocloud 拉取代理（仅公开镜像）。
+      # 首次推送后须把 GHCR package 可见性设为 public（见 docs/deployment.md）。
+      GHCR_PROXY: ${{ secrets.GHCR_PROXY || 'ghcr.m.daocloud.io' }}
     steps:
       - uses: actions/checkout@v7
       - name: 从 Secrets 生成 .env（base64 中转，值不进入 shell 源码）
@@ -170,6 +218,9 @@ jobs:
           # 构建期依赖源（大陆服务器在 Secrets 里设镜像源；未设置时脚本用官方源默认值）
           UV_INDEX_URL: ${{ secrets.UV_INDEX_URL }}
           NPM_REGISTRY: ${{ secrets.NPM_REGISTRY }}
+          # 本次部署的镜像地址（build-images job 推送，经代理前缀拉取）
+          BACKEND_IMAGE: ${{ env.GHCR_PROXY }}/${{ github.repository_owner }}/lili-full-stack-backend:${{ github.sha }}
+          FRONTEND_IMAGE: ${{ env.GHCR_PROXY }}/${{ github.repository_owner }}/lili-full-stack-frontend:${{ github.sha }}
         run: |
           bash scripts/generate-deploy-env.sh "$RUNNER_TEMP/deploy.env"
           env_b64=$(base64 < "$RUNNER_TEMP/deploy.env" | tr -d '\n')
@@ -258,8 +309,11 @@ jobs:
             # 校验全部通过才替换（同文件系统 rename，不存在写一半的 .env）
             mv .env.new .env
 
-            echo "=== 4/5 构建并重启容器 ==="
-            docker compose -f compose.yml up -d --build --remove-orphans || {
+            echo "=== 4/5 拉取镜像并重启容器 ==="
+            # 镜像由 CI 构建推送（见 build-images job），服务器不再现场构建；
+            # db 用本地已有的 postgres:18，不在 pull 范围内
+            docker compose -f compose.yml pull backend frontend
+            docker compose -f compose.yml up -d --remove-orphans || {
               echo "--- prestart logs ---"
               docker compose -f compose.yml logs prestart --tail 50
               echo "--- backend logs ---"

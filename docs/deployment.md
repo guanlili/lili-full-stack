@@ -47,12 +47,19 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 
 ```text
 CI（后端 lint + 测试、前端 lint + 构建、客户端一致性）
-→ checkout 到 CI 验证过的 commit
-→ 从 Secrets 生成 .env
-→ 构建镜像、运行 Alembic 迁移
+→ CI 构建镜像并推送 GHCR（backend/frontend，tag = commit sha）
+→ 服务器 checkout 到 CI 验证过的 commit
+→ 从 Secrets 生成 .env（含镜像地址：默认经 GHCR 代理拉取）
+→ 拉取镜像、运行 Alembic 迁移
 → 重启容器、执行 readiness 检查
-→ 清理旧镜像
+→ 清理悬空镜像
 ```
+
+> 为什么不在服务器上构建：大陆服务器直连 `files.pythonhosted.org`（uv lock 里记录的下载直链）速率极低，
+> 且 `uv sync --frozen` 会忽略镜像源配置（[astral-sh/uv#19625](https://github.com/astral-sh/uv/issues/19625)），
+> 现场构建一次依赖升级可耗时 30 分钟以上。改为 CI 构建、服务器只 pull 后，部署稳定在 2 分钟内。
+> 服务器拉取 GHCR 默认走 `ghcr.m.daocloud.io` 代理（仅支持公开镜像），可用 Secret `GHCR_PROXY` 覆盖或置空直连。
+> **首次部署后**需到 GitHub → Packages 把两个镜像的可见性设为 Public（或改用带认证的直连方案）。
 
 部署只来自 `master` 的 push 或手动触发。部署任务共用生产并发锁；过期提交会被跳过，只有当前提交自己的 CI 通过后才会部署。
 
@@ -159,7 +166,10 @@ git push
 紧急事故可以临时回到已知正常提交：
 
 ```bash
-ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> && docker compose -f compose.yml up -d --build"
+# 回滚 = 把 .env 里两个镜像 tag 换回上一个好提交的 sha，再 up（历史镜像都在 GHCR 上，秒级切换）
+ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> \
+  && sed -i -E 's#^(BACKEND_IMAGE=.*/lili-full-stack-backend):.*#\1:<上一个好提交sha>#; s#^(FRONTEND_IMAGE=.*/lili-full-stack-frontend):.*#\1:<上一个好提交sha>#' .env \
+  && docker compose -f compose.yml up -d"
 ```
 
 紧急回滚后仍需在仓库中执行 `git revert`，让远端历史与线上版本一致。

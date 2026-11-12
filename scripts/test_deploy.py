@@ -30,6 +30,8 @@ class DeploymentTests(unittest.TestCase):
             FIRST_SUPERUSER="admin@example.com",
             FIRST_SUPERUSER_PASSWORD="fake-password",
             POSTGRES_PASSWORD="fake-db-password",
+            BACKEND_IMAGE="ghcr.m.daocloud.io/example/lili-full-stack-backend:deadbeef",
+            FRONTEND_IMAGE="ghcr.m.daocloud.io/example/lili-full-stack-frontend:deadbeef",
             APP_PORT="8083",
             WORKERS="1",
             USERS_OPEN_REGISTRATION="false",
