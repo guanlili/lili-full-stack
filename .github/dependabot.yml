@@ -27,7 +27,8 @@ updates:
     labels: [dependencies]
     groups:
       python-packages:
-        patterns: ["*"]
+        # major 升级不进组：单独成 PR 便于逐个评估（fastapi/sqlmodel 等 major 有破坏性）
+        update-types: ["patch", "minor"]
 
   # npm（前端）
   - package-ecosystem: npm
@@ -44,7 +45,8 @@ updates:
       - dependency-name: "@hey-api/openapi-ts"
     groups:
       npm-packages:
-        patterns: ["*"]
+        # major 升级不进组（如 @hookform/resolvers 5→7 直接打挂过构建），单独 PR 评估
+        update-types: ["patch", "minor"]
 
   # Dockerfile 基础镜像
   - package-ecosystem: docker
