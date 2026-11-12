@@ -1,0 +1,77 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: "weekly"
+    # 新版本先冷却几天再提 PR，避开刚发布就撤回的坏版本
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ⬆
+    labels: [dependencies]
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Python（uv，根 workspace）
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ⬆
+    labels: [dependencies]
+    groups:
+      python-packages:
+        patterns: ["*"]
+
+  # npm（前端）
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ⬆
+    labels: [dependencies]
+    ignore:
+      # 精确锁死：升级需要迁移生成客户端（见 openapi-ts.config.ts），单独评估
+      - dependency-name: "@hey-api/openapi-ts"
+    groups:
+      npm-packages:
+        patterns: ["*"]
+
+  # Dockerfile 基础镜像
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ⬆
+    labels: [dependencies]
+    groups:
+      docker:
+        patterns: ["*"]
+
+  # compose 内的 image:（postgres 等，major 升级务必人工审）
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ⬆
+    labels: [dependencies]
+    groups:
+      docker-compose:
+        patterns: ["*"]
