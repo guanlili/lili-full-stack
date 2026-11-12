@@ -1,7 +1,11 @@
 FROM python:3.14-slim
 
-# 依赖下载源可覆盖（大陆服务器等网络受限环境设为镜像源；uv 会把 lock 中
-# 记录的 pypi.org 请求重写到该源，lockfile 内容不变）
+# 依赖下载源可覆盖（大陆服务器等网络受限环境设为镜像源，如
+# https://mirrors.cloud.tencent.com/pypi/simple）。
+# 注意：uv sync --frozen 按 lock 里记录的 files.pythonhosted.org 直链下载、
+# 忽略 index 配置（https://github.com/astral-sh/uv/issues/19625），
+# 因此镜像源启用时还需把 lock 中的下载直链域名重写为镜像的同构路径
+# （主流镜像 tuna/腾讯云均满足：{mirror}/simple 与 {mirror}/packages 同根）。
 ARG UV_INDEX_URL=https://pypi.org/simple
 ENV UV_DEFAULT_INDEX=$UV_INDEX_URL
 
@@ -27,9 +31,13 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Install dependencies
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+# （bind mount 换成 COPY：镜像源启用时需要 sed 原地重写 lock 的下载直链，
+#   见文件头说明；重写只发生在镜像层内，不污染构建上下文）
+COPY uv.lock pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    if [ "$UV_INDEX_URL" != "https://pypi.org/simple" ]; then \
+      sed -i "s|https://files.pythonhosted.org|${UV_INDEX_URL%/simple}|g" uv.lock; \
+    fi && \
     uv sync --frozen --no-install-workspace --no-dev --package app
 
 COPY ./backend/scripts /app/backend/scripts
@@ -41,8 +49,6 @@ COPY ./backend/app /app/backend/app
 # Sync the project
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-dev --package app
 
 # 非 root 运行：容器内进程被攻破时不直接持有 root 身份

@@ -47,20 +47,20 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 
 ```text
 CI（后端 lint + 测试、前端 lint + 构建、客户端一致性）
-→ CI 构建镜像（backend/frontend，tag = commit sha）并打包为 artifact
-→ deploy job 下载镜像包，经 scp 传入服务器 .images/
 → 服务器 checkout 到 CI 验证过的 commit
-→ 从 Secrets 生成 .env（镜像 tag 指向本次 commit）
-→ docker load 载入镜像、运行 Alembic 迁移
+→ 从 Secrets 生成 .env
+→ 现场构建镜像（Python/npm 依赖经国内镜像源下载）、运行 Alembic 迁移
 → 重启容器、执行 readiness 检查
-→ 清理镜像包与悬空镜像
+→ 清理旧镜像
 ```
 
-> 为什么不在服务器上构建：大陆服务器直连 `files.pythonhosted.org`（uv lock 里记录的下载直链）速率极低，
-> 且 `uv sync --frozen` 会忽略镜像源配置（[astral/uv#19625](https://github.com/astral-sh/uv/issues/19625)），
-> 现场构建一次依赖升级可耗时 30 分钟以上。
-> 为什么不用镜像仓库（GHCR + 代理拉取）：大陆可用的 GHCR 公共代理只放行白名单内的知名镜像，
-> 自有镜像需要私有仓库凭据或公开包配置。artifact + SSH 直传不依赖任何第三方服务，简单可靠。
+> 大陆服务器依赖下载要点：
+> - npm 走 `NPM_REGISTRY`（Secret，如 npmmirror），lockfile 的 integrity 校验不受 registry 影响；
+> - Python 依赖有特殊处理：`uv sync --frozen` 按 lock 里记录的 `files.pythonhosted.org` 直链下载、
+>   忽略 index 配置（[astral/uv#19625](https://github.com/astral-sh/uv/issues/19625)），
+>   直连速率可低至 KB/s 级。因此 `backend/Dockerfile` 在 `UV_INDEX_URL` 指向镜像源时
+>   会把 lock 中的直链域名重写为镜像的同构路径（tuna/腾讯云镜像均满足 `{mirror}/simple`
+>   与 `{mirror}/packages` 同根）。实测腾讯云内网镜像可达 10MB/s，全量依赖构建约 1 分钟。
 
 部署只来自 `master` 的 push 或手动触发。部署任务共用生产并发锁；过期提交会被跳过，只有当前提交自己的 CI 通过后才会部署。
 
@@ -167,11 +167,7 @@ git push
 紧急事故可以临时回到已知正常提交：
 
 ```bash
-# 回滚 = 把 .env 里两个镜像 tag 换回上一个好提交的 sha，再 up
-# （该 sha 的镜像仍在服务器本地；若已被清理，重跑那次提交的 CI 会重新构建）
-ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> \
-  && sed -i -E 's#^(BACKEND_IMAGE=lili-full-stack-backend):.*#\1:<上一个好提交sha>#; s#^(FRONTEND_IMAGE=lili-full-stack-frontend):.*#\1:<上一个好提交sha>#' .env \
-  && docker compose -f compose.yml up -d"
+ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> && docker compose -f compose.yml up -d --build"
 ```
 
 紧急回滚后仍需在仓库中执行 `git revert`，让远端历史与线上版本一致。

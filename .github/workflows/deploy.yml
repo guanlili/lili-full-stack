@@ -124,57 +124,9 @@ jobs:
             exit 1
           fi
 
-  build-images:
-    name: 构建镜像（artifact 传输）
-    # 服务器现场构建在大陆网络下不可行（uv --frozen 按 lock 直链下载 files.pythonhosted.org，
-    # 镜像源不生效，见 https://github.com/astral-sh/uv/issues/19625）；第三方 GHCR 代理只白名单放行知名镜像。
-    # 因此 CI 构建后经 GitHub artifact + SSH 直传镜像 tar，服务器 docker load 后原地起容器，
-    # 不依赖任何外部 registry。
-    needs: [backend, frontend]
-    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    env:
-      BACKEND_TAG: lili-full-stack-backend:${{ github.sha }}
-      FRONTEND_TAG: lili-full-stack-frontend:${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
-      - name: 构建 backend 镜像
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile
-          load: true
-          tags: ${{ env.BACKEND_TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: 构建 frontend 镜像
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          load: true
-          tags: ${{ env.FRONTEND_TAG }}
-          build-args: |
-            VITE_API_URL=
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: 导出压缩镜像包
-        run: |
-          mkdir -p "$RUNNER_TEMP/images"
-          docker save "$BACKEND_TAG" | gzip -1 > "$RUNNER_TEMP/images/backend.tar.gz"
-          docker save "$FRONTEND_TAG" | gzip -1 > "$RUNNER_TEMP/images/frontend.tar.gz"
-          ls -lh "$RUNNER_TEMP/images"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deploy-images
-          path: ${{ runner.temp }}/images/*.tar.gz
-          retention-days: 1
-          compression-level: 0
-
   deploy:
     name: 部署到服务器
-    needs: [backend, frontend, build-images]
+    needs: [backend, frontend]
     # PR 只跑检查不部署；push 事件本身已限定 master 分支
     if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # 同一生产环境互斥；过期提交在服务器持锁阶段跳过，不假设排队顺序。
@@ -231,22 +183,6 @@ jobs:
           echo "::add-mask::$smoke_b64"
           echo "smoke_b64=$smoke_b64" >> "$GITHUB_OUTPUT"
           rm -f "$RUNNER_TEMP/deploy.env"
-
-      - name: 下载镜像包
-        uses: actions/download-artifact@v4
-        with:
-          name: deploy-images
-          path: images-pkg
-
-      - name: 传输镜像到服务器
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "images-pkg/*.tar.gz"
-          target: ${{ secrets.DEPLOY_PATH }}/.images
-          strip_components: 1
 
       - name: 服务器拉代码并重启服务
         uses: appleboy/ssh-action@v1.2.2
@@ -325,12 +261,10 @@ jobs:
             # 校验全部通过才替换（同文件系统 rename，不存在写一半的 .env）
             mv .env.new .env
 
-            echo "=== 4/5 载入镜像并重启容器 ==="
-            # 镜像由 CI 构建并经 artifact+scp 传入（见 build-images job），服务器不再现场构建；
-            # db 用本地已有的 postgres:18
-            gunzip -c .images/backend.tar.gz | docker load
-            gunzip -c .images/frontend.tar.gz | docker load
-            docker compose -f compose.yml up -d --remove-orphans || {
+            echo "=== 4/5 构建并重启容器 ==="
+            # 依赖下载走国内镜像源（Secrets 配置 UV_INDEX_URL/NPM_REGISTRY；
+            # uv 的 lock 直链重写见 backend/Dockerfile），现场构建可控
+            docker compose -f compose.yml up -d --build --remove-orphans || {
               echo "--- prestart logs ---"
               docker compose -f compose.yml logs prestart --tail 50
               echo "--- backend logs ---"
@@ -367,6 +301,5 @@ jobs:
             } > .deploy-target.new
             mv .deploy-target.new .deploy-target
 
-            echo "=== 清理镜像包与悬空镜像，防止磁盘占满 ==="
-            rm -f .images/backend.tar.gz .images/frontend.tar.gz
+            echo "=== 清理旧镜像，防止磁盘被悬空镜像占满 ==="
             docker image prune -f

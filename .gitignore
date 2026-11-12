@@ -17,8 +17,6 @@ node_modules/
 .env.new.*
 .deploy-target
 .deploy-target.new
-# CI 传输的镜像包（docker load 后即清理）
-.images/
 __pycache__/
 
 # Shared deployment/backup maintenance lock
