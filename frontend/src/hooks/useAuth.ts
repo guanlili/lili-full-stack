@@ -54,9 +54,8 @@ const useAuth = () => {
 
   const loginMutation = useMutation({
     mutationFn: login,
-    onSuccess: () => {
-      navigate({ to: "/" })
-    },
+    // 成功后的跳转由调用方通过 mutate(data, { onSuccess }) 决定
+    // （登录页需要支持 ?redirect= 回跳）
     onError: handleError.bind(showErrorToast),
   })
 

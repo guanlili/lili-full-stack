@@ -27,8 +27,13 @@ export function startSession(tokens: Token) {
 }
 
 export function expireSession() {
+  // 记住当前页面，登录后回来；已在 /login（含带参）时直接去登录页避免循环
+  const current = window.location.pathname + window.location.search
   clearSession()
-  window.location.assign("/login")
+  const target = current.startsWith("/login")
+    ? "/login"
+    : `/login?redirect=${encodeURIComponent(current)}`
+  window.location.assign(target)
 }
 
 export function configureSession() {

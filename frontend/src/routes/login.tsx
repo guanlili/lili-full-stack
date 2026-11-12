@@ -3,6 +3,7 @@ import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useRouter,
 } from "@tanstack/react-router"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
@@ -35,8 +36,19 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
+// 401 过期登出时带上的回跳地址（仅接受站内相对路径，防开放重定向）
+function safeRedirectTarget(raw: unknown): string {
+  if (typeof raw !== "string") return "/"
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/"
+  return raw
+}
+
 export const Route = createFileRoute("/login")({
   component: Login,
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const target = safeRedirectTarget(search.redirect)
+    return target === "/" ? {} : { redirect: target }
+  },
   beforeLoad: async () => {
     if (isLoggedIn()) {
       throw redirect({
@@ -55,6 +67,8 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const router = useRouter()
+  const { redirect } = Route.useSearch()
   const [demoCredentialsLoading, setDemoCredentialsLoading] = useState(false)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -68,7 +82,12 @@ function Login() {
 
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
-    loginMutation.mutate(data)
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        // 回跳到 401 前的页面；redirect 是完整路径（可能含查询串），走 history.push
+        router.history.push(redirect ?? "/")
+      },
+    })
   }
 
   const fillDemoCredentials = async () => {

@@ -33,5 +33,6 @@ export const Route = createRootRoute({
   ),
   pendingComponent: () => <LoadingScreen />,
   notFoundComponent: () => <NotFound />,
-  errorComponent: () => <ErrorComponent />,
+  // 直接传组件引用，让 TanStack 注入 error/reset props（错误信息与重试能力）
+  errorComponent: ErrorComponent,
 })
