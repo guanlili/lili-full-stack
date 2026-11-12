@@ -13,13 +13,13 @@ from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.crud import create_user
-from app.models import RefreshToken, User, UserCreate
+from app.models import AuditLog, RefreshToken, User, UserCreate
 from app.utils import generate_password_reset_token
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
 
-def test_get_access_token(client: TestClient) -> None:
+def test_get_access_token(client: TestClient, db: Session) -> None:
     login_data = {
         "username": settings.FIRST_SUPERUSER,
         "password": settings.FIRST_SUPERUSER_PASSWORD,
@@ -30,14 +30,57 @@ def test_get_access_token(client: TestClient) -> None:
     assert "access_token" in tokens
     assert tokens["access_token"]
 
+    superuser = db.exec(
+        select(User).where(col(User.email) == settings.FIRST_SUPERUSER)
+    ).one()
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "login.success")
+            & (col(AuditLog.actor_user_id) == superuser.id)
+        )
+    ).first()
+    assert audit is not None
+    assert audit.details == {"email": settings.FIRST_SUPERUSER}
 
-def test_get_access_token_incorrect_password(client: TestClient) -> None:
+
+def test_get_access_token_incorrect_password(client: TestClient, db: Session) -> None:
     login_data = {
         "username": settings.FIRST_SUPERUSER,
         "password": "incorrect",
     }
     r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
     assert r.status_code == 400
+
+    audits = db.exec(
+        select(AuditLog).where(col(AuditLog.action) == "login.failed")
+    ).all()
+    assert any(
+        audit.actor_user_id is None
+        and audit.details
+        and audit.details.get("email") == settings.FIRST_SUPERUSER
+        for audit in audits
+    )
+
+
+def test_logout_all_records_audit(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/login/logout-all",
+        headers=superuser_token_headers,
+    )
+    assert r.status_code == 200
+
+    superuser = db.exec(
+        select(User).where(col(User.email) == settings.FIRST_SUPERUSER)
+    ).one()
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "session.revoked_all")
+            & (col(AuditLog.actor_user_id) == superuser.id)
+        )
+    ).first()
+    assert audit is not None
 
 
 def test_refresh_token_rotation(client: TestClient) -> None:
@@ -155,6 +198,14 @@ def test_reset_password(client: TestClient, db: Session) -> None:
     db.refresh(user)
     verified, _ = verify_password(new_password, user.hashed_password)
     assert verified
+
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "user.password_reset")
+            & (col(AuditLog.resource_id) == str(user.id))
+        )
+    ).first()
+    assert audit is not None
 
 
 def test_reset_password_invalid_token(

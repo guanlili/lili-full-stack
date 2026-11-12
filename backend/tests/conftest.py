@@ -11,6 +11,7 @@ from app.api.deps import get_db
 from app.api.routes.utils import get_readiness_dsn
 from app.core.config import settings
 from app.core.db import init_db
+from app.core.limiter import limiter
 from app.main import app
 from app.models import User, UserRole
 from tests.utils.user import authentication_token_from_email
@@ -48,6 +49,9 @@ def db() -> Generator[Session]:
             f"Refusing to run tests in ENVIRONMENT={settings.ENVIRONMENT}. "
             "Set ENVIRONMENT=local to run tests."
         )
+    # 限流默认关闭：大量测试用例共享同一 TestClient（同 IP），会互相触发 429。
+    # 限流行为由 tests/api/routes/test_rate_limit.py 单独开启验证。
+    limiter.enabled = False
     # 安全兜底 2：测试库绝不能指向开发/生产库（会清空其数据）。
     # 必须发生在任何建库、建表或删除操作之前。
     test_uri = str(settings.SQLALCHEMY_DATABASE_TEST_URI)

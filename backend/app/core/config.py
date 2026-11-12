@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # 是否开放自助注册。代码默认关（安全兜底）；本地 .env.example 开着便于开发演示，
     # 生产由 GitHub Secrets 控制（deploy.yml 默认写 false）
     USERS_OPEN_REGISTRATION: bool = False
+    # 认证敏感接口限流（slowapi，按客户端 IP 进程内计数）。
+    # 默认开启；测试由 conftest 统一关闭。多 worker 部署时为每 worker 独立限额。
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN: str = "10/minute"
+    RATE_LIMIT_RECOVERY: str = "5/minute"
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 

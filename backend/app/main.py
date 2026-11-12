@@ -5,10 +5,12 @@ import uuid
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.core.limiter import limiter, rate_limit_exceeded_handler
 
 # Fraction of requests traced by Sentry; full tracing quickly exhausts quotas.
 SENTRY_TRACES_SAMPLE_RATE = 0.1
@@ -30,6 +32,9 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
 )
+# 认证敏感接口限流（见 app/core/limiter.py 与 login 路由）
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 logger = logging.getLogger(__name__)
 

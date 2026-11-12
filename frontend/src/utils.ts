@@ -20,6 +20,7 @@ const ERROR_MESSAGE_TRANSLATIONS: Record<string, string> = {
   "User updated successfully": "用户信息更新成功",
   "User deleted successfully": "用户删除成功",
   "Invalid token": "链接无效或已过期",
+  "Too many requests": "请求过于频繁，请稍后再试",
 }
 
 function translateErrorMessage(message: string): string {

@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -11,7 +11,9 @@ from sqlmodel import col, select
 from app import crud
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core import security
+from app.core.audit import record_audit
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.sessions import (
     hash_refresh_token,
     issue_refresh_token,
@@ -45,8 +47,11 @@ class DemoCredentials(BaseModel):
 
 
 @router.post("/login/access-token")
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
 def login_access_token(
-    session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    session: SessionDep,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     """
     OAuth2 compatible token login, get an access token for future requests
@@ -55,9 +60,32 @@ def login_access_token(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:
+        record_audit(
+            session=session,
+            actor=None,
+            action="login.failed",
+            resource_type="session",
+            details={"email": form_data.username},
+        )
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
+        record_audit(
+            session=session,
+            actor=user,
+            action="login.failed",
+            resource_type="session",
+            resource_id=user.id,
+            details={"email": form_data.username, "reason": "inactive_user"},
+        )
         raise HTTPException(status_code=400, detail="Inactive user")
+    record_audit(
+        session=session,
+        actor=user,
+        action="login.success",
+        resource_type="session",
+        resource_id=user.id,
+        details={"email": form_data.username},
+    )
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token = issue_refresh_token(session=session, user_id=user.id)
     session.commit()
@@ -120,6 +148,13 @@ def logout_all(*, session: SessionDep, current_user: CurrentUser) -> Message:
     revoke_user_refresh_tokens(session=session, user_id=current_user.id)
     session.add(current_user)
     session.commit()
+    record_audit(
+        session=session,
+        actor=current_user,
+        action="session.revoked_all",
+        resource_type="session",
+        resource_id=current_user.id,
+    )
     return Message(message="All sessions have been revoked")
 
 
@@ -143,7 +178,12 @@ def test_token(current_user: CurrentUser) -> Any:
 
 
 @router.post("/password-recovery/{email}")
-def recover_password(email: str, session: SessionDep) -> Message:
+@limiter.limit(settings.RATE_LIMIT_RECOVERY)
+def recover_password(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    email: str,
+    session: SessionDep,
+) -> Message:
     """
     Password Recovery
     """
@@ -178,7 +218,12 @@ def recover_password(email: str, session: SessionDep) -> Message:
 
 
 @router.post("/reset-password/")
-def reset_password(session: SessionDep, body: NewPassword) -> Message:
+@limiter.limit(settings.RATE_LIMIT_RECOVERY)
+def reset_password(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    session: SessionDep,
+    body: NewPassword,
+) -> Message:
     """
     Reset password
     """
@@ -199,6 +244,13 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
         session=session,
         db_user=user,
         user_in=user_in_update,
+    )
+    record_audit(
+        session=session,
+        actor=user,
+        action="user.password_reset",
+        resource_type="user",
+        resource_id=user.id,
     )
     return Message(message="Password updated successfully")
 
