@@ -1,4 +1,4 @@
-import { useRouter, type ErrorComponentProps } from "@tanstack/react-router"
+import { type ErrorComponentProps, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 
 const ErrorComponent = ({ error, reset }: ErrorComponentProps) => {
@@ -36,10 +36,7 @@ const ErrorComponent = ({ error, reset }: ErrorComponentProps) => {
           <Button onClick={() => (reset ? reset() : window.location.reload())}>
             重试
           </Button>
-          <Button
-            onClick={() => router.history.push("/")}
-            variant="outline"
-          >
+          <Button onClick={() => router.history.push("/")} variant="outline">
             返回首页
           </Button>
         </div>

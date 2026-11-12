@@ -6,15 +6,18 @@
     <!-- 阻塞脚本：首帧渲染前把主题 class 挂到 <html>，避免暗色用户首屏闪白。
          key 与 main.tsx 的 ThemeProvider storageKey="vite-ui-theme" 保持一致 -->
     <script>
-      ;(function () {
+      ;(() => {
+        var stored, dark
         try {
-          var t = localStorage.getItem("vite-ui-theme") || "system"
-          var dark =
-            t === "dark" ||
-            (t === "system" &&
+          stored = localStorage.getItem("vite-ui-theme") || "system"
+          dark =
+            stored === "dark" ||
+            (stored === "system" &&
               window.matchMedia("(prefers-color-scheme: dark)").matches)
-          document.documentElement.classList.add(dark ? "dark" : "light")
-        } catch (e) {}
+        } catch {
+          dark = false
+        }
+        document.documentElement.classList.add(dark ? "dark" : "light")
       })()
     </script>
     <!-- 新项目改这里：标题和 favicon（src/config.ts 里的 APP_NAME 也要同步） -->
