@@ -125,48 +125,52 @@ jobs:
           fi
 
   build-images:
-    name: 构建并推送镜像（GHCR）
+    name: 构建镜像（artifact 传输）
     # 服务器现场构建在大陆网络下不可行（uv --frozen 按 lock 直链下载 files.pythonhosted.org，
-    # 镜像源不生效，见 https://github.com/astral-sh/uv/issues/19625），
-    # 改为 CI 构建、服务器只 pull（拉取经 GHCR_PROXY 代理，Secret 可覆盖，默认 daocloud）。
+    # 镜像源不生效，见 https://github.com/astral-sh/uv/issues/19625）；第三方 GHCR 代理只白名单放行知名镜像。
+    # 因此 CI 构建后经 GitHub artifact + SSH 直传镜像 tar，服务器 docker load 后原地起容器，
+    # 不依赖任何外部 registry。
     needs: [backend, frontend]
     if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     env:
-      # ghcr 要求小写；模板复用时 owner 含大写需自行转换
-      IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+      BACKEND_TAG: lili-full-stack-backend:${{ github.sha }}
+      FRONTEND_TAG: lili-full-stack-frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
-      - name: 登录 GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: 构建并推送 backend 镜像
+      - name: 构建 backend 镜像
         uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_PREFIX }}/lili-full-stack-backend:${{ github.sha }}
+          load: true
+          tags: ${{ env.BACKEND_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: 构建并推送 frontend 镜像
+      - name: 构建 frontend 镜像
         uses: docker/build-push-action@v6
         with:
           context: .
           file: frontend/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_PREFIX }}/lili-full-stack-frontend:${{ github.sha }}
+          load: true
+          tags: ${{ env.FRONTEND_TAG }}
           build-args: |
             VITE_API_URL=
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: 导出压缩镜像包
+        run: |
+          mkdir -p "$RUNNER_TEMP/images"
+          docker save "$BACKEND_TAG" | gzip -1 > "$RUNNER_TEMP/images/backend.tar.gz"
+          docker save "$FRONTEND_TAG" | gzip -1 > "$RUNNER_TEMP/images/frontend.tar.gz"
+          ls -lh "$RUNNER_TEMP/images"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-images
+          path: ${{ runner.temp }}/images/*.tar.gz
+          retention-days: 1
+          compression-level: 0
 
   deploy:
     name: 部署到服务器
@@ -178,10 +182,6 @@ jobs:
       group: production-deploy
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    env:
-      # 大陆服务器直连 ghcr.io 会超时；默认走 daocloud 拉取代理（仅公开镜像）。
-      # 首次推送后须把 GHCR package 可见性设为 public（见 docs/deployment.md）。
-      GHCR_PROXY: ${{ secrets.GHCR_PROXY || 'ghcr.m.daocloud.io' }}
     steps:
       - uses: actions/checkout@v7
       - name: 从 Secrets 生成 .env（base64 中转，值不进入 shell 源码）
@@ -218,9 +218,9 @@ jobs:
           # 构建期依赖源（大陆服务器在 Secrets 里设镜像源；未设置时脚本用官方源默认值）
           UV_INDEX_URL: ${{ secrets.UV_INDEX_URL }}
           NPM_REGISTRY: ${{ secrets.NPM_REGISTRY }}
-          # 本次部署的镜像地址（build-images job 推送，经代理前缀拉取）
-          BACKEND_IMAGE: ${{ env.GHCR_PROXY }}/${{ github.repository_owner }}/lili-full-stack-backend:${{ github.sha }}
-          FRONTEND_IMAGE: ${{ env.GHCR_PROXY }}/${{ github.repository_owner }}/lili-full-stack-frontend:${{ github.sha }}
+          # 本次部署的镜像 tag（build-images job 构建、经 artifact+scp 传输后服务器 load）
+          BACKEND_IMAGE: lili-full-stack-backend:${{ github.sha }}
+          FRONTEND_IMAGE: lili-full-stack-frontend:${{ github.sha }}
         run: |
           bash scripts/generate-deploy-env.sh "$RUNNER_TEMP/deploy.env"
           env_b64=$(base64 < "$RUNNER_TEMP/deploy.env" | tr -d '\n')
@@ -231,6 +231,22 @@ jobs:
           echo "::add-mask::$smoke_b64"
           echo "smoke_b64=$smoke_b64" >> "$GITHUB_OUTPUT"
           rm -f "$RUNNER_TEMP/deploy.env"
+
+      - name: 下载镜像包
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-images
+          path: images-pkg
+
+      - name: 传输镜像到服务器
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "images-pkg/*.tar.gz"
+          target: ${{ secrets.DEPLOY_PATH }}/.images
+          strip_components: 1
 
       - name: 服务器拉代码并重启服务
         uses: appleboy/ssh-action@v1.2.2
@@ -309,10 +325,11 @@ jobs:
             # 校验全部通过才替换（同文件系统 rename，不存在写一半的 .env）
             mv .env.new .env
 
-            echo "=== 4/5 拉取镜像并重启容器 ==="
-            # 镜像由 CI 构建推送（见 build-images job），服务器不再现场构建；
-            # db 用本地已有的 postgres:18，不在 pull 范围内
-            docker compose -f compose.yml pull backend frontend
+            echo "=== 4/5 载入镜像并重启容器 ==="
+            # 镜像由 CI 构建并经 artifact+scp 传入（见 build-images job），服务器不再现场构建；
+            # db 用本地已有的 postgres:18
+            gunzip -c .images/backend.tar.gz | docker load
+            gunzip -c .images/frontend.tar.gz | docker load
             docker compose -f compose.yml up -d --remove-orphans || {
               echo "--- prestart logs ---"
               docker compose -f compose.yml logs prestart --tail 50
@@ -350,5 +367,6 @@ jobs:
             } > .deploy-target.new
             mv .deploy-target.new .deploy-target
 
-            echo "=== 清理旧镜像，防止磁盘被悬空镜像占满 ==="
+            echo "=== 清理镜像包与悬空镜像，防止磁盘占满 ==="
+            rm -f .images/backend.tar.gz .images/frontend.tar.gz
             docker image prune -f

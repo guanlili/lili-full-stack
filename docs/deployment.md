@@ -47,19 +47,20 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 
 ```text
 CI（后端 lint + 测试、前端 lint + 构建、客户端一致性）
-→ CI 构建镜像并推送 GHCR（backend/frontend，tag = commit sha）
+→ CI 构建镜像（backend/frontend，tag = commit sha）并打包为 artifact
+→ deploy job 下载镜像包，经 scp 传入服务器 .images/
 → 服务器 checkout 到 CI 验证过的 commit
-→ 从 Secrets 生成 .env（含镜像地址：默认经 GHCR 代理拉取）
-→ 拉取镜像、运行 Alembic 迁移
+→ 从 Secrets 生成 .env（镜像 tag 指向本次 commit）
+→ docker load 载入镜像、运行 Alembic 迁移
 → 重启容器、执行 readiness 检查
-→ 清理悬空镜像
+→ 清理镜像包与悬空镜像
 ```
 
 > 为什么不在服务器上构建：大陆服务器直连 `files.pythonhosted.org`（uv lock 里记录的下载直链）速率极低，
-> 且 `uv sync --frozen` 会忽略镜像源配置（[astral-sh/uv#19625](https://github.com/astral-sh/uv/issues/19625)），
-> 现场构建一次依赖升级可耗时 30 分钟以上。改为 CI 构建、服务器只 pull 后，部署稳定在 2 分钟内。
-> 服务器拉取 GHCR 默认走 `ghcr.m.daocloud.io` 代理（仅支持公开镜像），可用 Secret `GHCR_PROXY` 覆盖或置空直连。
-> **首次部署后**需到 GitHub → Packages 把两个镜像的可见性设为 Public（或改用带认证的直连方案）。
+> 且 `uv sync --frozen` 会忽略镜像源配置（[astral/uv#19625](https://github.com/astral-sh/uv/issues/19625)），
+> 现场构建一次依赖升级可耗时 30 分钟以上。
+> 为什么不用镜像仓库（GHCR + 代理拉取）：大陆可用的 GHCR 公共代理只放行白名单内的知名镜像，
+> 自有镜像需要私有仓库凭据或公开包配置。artifact + SSH 直传不依赖任何第三方服务，简单可靠。
 
 部署只来自 `master` 的 push 或手动触发。部署任务共用生产并发锁；过期提交会被跳过，只有当前提交自己的 CI 通过后才会部署。
 
@@ -166,9 +167,10 @@ git push
 紧急事故可以临时回到已知正常提交：
 
 ```bash
-# 回滚 = 把 .env 里两个镜像 tag 换回上一个好提交的 sha，再 up（历史镜像都在 GHCR 上，秒级切换）
+# 回滚 = 把 .env 里两个镜像 tag 换回上一个好提交的 sha，再 up
+# （该 sha 的镜像仍在服务器本地；若已被清理，重跑那次提交的 CI 会重新构建）
 ssh 服务器 "cd 部署路径 && git reset --hard <上一个好提交> \
-  && sed -i -E 's#^(BACKEND_IMAGE=.*/lili-full-stack-backend):.*#\1:<上一个好提交sha>#; s#^(FRONTEND_IMAGE=.*/lili-full-stack-frontend):.*#\1:<上一个好提交sha>#' .env \
+  && sed -i -E 's#^(BACKEND_IMAGE=lili-full-stack-backend):.*#\1:<上一个好提交sha>#; s#^(FRONTEND_IMAGE=lili-full-stack-frontend):.*#\1:<上一个好提交sha>#' .env \
   && docker compose -f compose.yml up -d"
 ```
 
