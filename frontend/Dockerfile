@@ -1,12 +1,16 @@
 # Stage base: 安装依赖（dev / build 共用）
 # 注意：lockfile 需在仓库中提交（frontend/package-lock.json），npm ci 保证构建可复现
+# NPM_REGISTRY 可覆盖为镜像源（大陆服务器等网络受限环境），lockfile 的
+# integrity 校验不受 registry 影响
 FROM node:24-slim AS base
+
+ARG NPM_REGISTRY=https://registry.npmjs.org
 
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
 
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --registry=$NPM_REGISTRY
 
 COPY ./frontend ./
 
