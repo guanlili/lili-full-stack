@@ -2,9 +2,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import EmailStr
+from pydantic import EmailStr, field_validator
 from sqlalchemy import JSON, Column, DateTime
 from sqlmodel import Field, SQLModel
+
+from app.core.passwords import validate_password_not_common
 
 
 def get_datetime_utc() -> datetime:
@@ -23,11 +25,22 @@ class UserBase(SQLModel):
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=128)
 
+    _check_password = field_validator("password")(validate_password_not_common)
+
+
+# 初始化播种专用：密码来自运维配置（.env / GitHub Secrets）而非用户输入，
+# 不做弱密码黑名单校验（否则本地/CI 默认的 changethis 演示配置直接建不出账号；
+# 生产环境 changethis 已在 Settings 层被拒绝）
+class SeedUserCreate(UserBase):
+    password: str = Field(min_length=8, max_length=128)
+
 
 class UserRegister(SQLModel):
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
+
+    _check_password = field_validator("password")(validate_password_not_common)
 
 
 # Properties to receive via API on update, all are optional
@@ -38,6 +51,8 @@ class UserUpdate(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
+    _check_password = field_validator("password")(validate_password_not_common)
+
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
@@ -47,6 +62,8 @@ class UserUpdateMe(SQLModel):
 class UpdatePassword(SQLModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+    _check_password = field_validator("new_password")(validate_password_not_common)
 
 
 # Database model, database table inferred from class name
@@ -103,6 +120,8 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+    _check_password = field_validator("new_password")(validate_password_not_common)
 
 
 class RoleBase(SQLModel):

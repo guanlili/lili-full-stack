@@ -3,7 +3,7 @@ from sqlmodel import Session, create_engine, select
 from app import crud
 from app.core.config import settings
 from app.core.permissions import seed_permissions
-from app.models import User, UserCreate
+from app.models import SeedUserCreate, User
 
 # pre_ping replaces pooled connections dropped by a database restart instead of
 # failing the first request that reuses them.
@@ -30,7 +30,7 @@ def init_db(session: Session) -> None:
         select(User).where(User.email == settings.FIRST_SUPERUSER)
     ).first()
     if not user:
-        user_in = UserCreate(
+        user_in = SeedUserCreate(
             email=settings.FIRST_SUPERUSER,
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,

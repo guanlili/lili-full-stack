@@ -211,7 +211,8 @@ def test_reset_password(client: TestClient, db: Session) -> None:
 def test_reset_password_invalid_token(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
-    data = {"new_password": "changethis", "token": "invalid"}
+    # 被测行为是"无效 token 返回 400"；密码取随机值，避免先撞弱密码黑名单（422）
+    data = {"new_password": random_lower_string(), "token": "invalid"}
     r = client.post(
         f"{settings.API_V1_STR}/reset-password/",
         headers=superuser_token_headers,

@@ -4,10 +4,10 @@ from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
 from app.core.sessions import revoke_user_refresh_tokens
-from app.models import User, UserCreate, UserUpdate
+from app.models import SeedUserCreate, User, UserCreate, UserUpdate
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> User:
+def create_user(*, session: Session, user_create: UserCreate | SeedUserCreate) -> User:
     db_obj = User.model_validate(
         user_create, update={"hashed_password": get_password_hash(user_create.password)}
     )

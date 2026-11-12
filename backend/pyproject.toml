@@ -22,6 +22,12 @@ dependencies = [
     "slowapi<1.0.0,>=0.1.10",
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    # 测试用 .env.example 的 changethis 弱密钥（测试库不出网，无安全影响），压掉重复告警
+    "ignore:The value of .* is \"changethis\", for security:UserWarning",
+]
+
 [dependency-groups]
 dev = [
     "pytest<10.0.0,>=7.4.3",

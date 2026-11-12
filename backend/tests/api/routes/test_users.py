@@ -6,9 +6,9 @@ from sqlmodel import Session, select
 
 from app import crud
 from app.core.config import settings
-from app.core.security import verify_password
+from app.core.security import get_password_hash, verify_password
 from app.models import RefreshToken, User, UserCreate
-from tests.utils.user import create_random_user
+from tests.utils.user import create_random_user, user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
 
@@ -254,19 +254,13 @@ def test_update_password_me(
         },
     )
     assert login.status_code == 200
-    new_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
-    old_data = {
-        "current_password": new_password,
-        "new_password": settings.FIRST_SUPERUSER_PASSWORD,
-    }
-    r = client.patch(
-        f"{settings.API_V1_STR}/users/me/password",
-        headers=new_headers,
-        json=old_data,
-    )
+    # 恢复旧密码不再是本测试的被测行为，且默认的 changethis 会撞弱密码黑名单（422），
+    # 改为直接落库写哈希恢复，保证后续用例仍能用默认密码登录超管
+    user_db.hashed_password = get_password_hash(settings.FIRST_SUPERUSER_PASSWORD)
+    db.add(user_db)
+    db.commit()
     db.refresh(user_db)
 
-    assert r.status_code == 200
     verified, _ = verify_password(
         settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password
     )
@@ -307,15 +301,23 @@ def test_update_user_me_email_exists(
 
 
 def test_update_password_me_same_password_error(
-    client: TestClient, superuser_token_headers: dict[str, str]
+    client: TestClient, db: Session
 ) -> None:
-    data = {
-        "current_password": settings.FIRST_SUPERUSER_PASSWORD,
-        "new_password": settings.FIRST_SUPERUSER_PASSWORD,
-    }
+    # 独立用户验证"新旧密码相同返回 400"；不依赖超管的 changethis 默认密码
+    # （changethis 会先撞弱密码黑名单的 422）
+    email = random_email()
+    password = random_lower_string()
+    crud.create_user(
+        session=db,
+        user_create=UserCreate(
+            email=email, password=password, is_active=True, is_superuser=False
+        ),
+    )
+    headers = user_authentication_headers(client=client, email=email, password=password)
+    data = {"current_password": password, "new_password": password}
     r = client.patch(
         f"{settings.API_V1_STR}/users/me/password",
-        headers=superuser_token_headers,
+        headers=headers,
         json=data,
     )
     assert r.status_code == 400

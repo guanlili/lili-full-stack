@@ -85,10 +85,11 @@ python3 scripts/test_deploy.py
 ### 正式上线
 
 1. 添加 DNS A 记录，例如 `项目名.你的域名.com → 服务器 IP`。国内服务器应尽早启动 ICP 备案。
-2. 在服务器级 Caddy 配置反向代理：
+2. 在服务器级 Caddy 配置反向代理（HSTS 在 TLS 终止层加；容器内 nginx 是明文 HTTP，加了也会被浏览器忽略）：
 
    ```text
    项目名.你的域名.com {
+       header Strict-Transport-Security "max-age=31536000"
        reverse_proxy localhost:8083
    }
    ```
