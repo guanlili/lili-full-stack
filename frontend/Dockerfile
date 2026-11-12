@@ -2,7 +2,7 @@
 # 注意：lockfile 需在仓库中提交（frontend/package-lock.json），npm ci 保证构建可复现
 # NPM_REGISTRY 可覆盖为镜像源（大陆服务器等网络受限环境），lockfile 的
 # integrity 校验不受 registry 影响
-FROM node:24-slim AS base
+FROM node:25-slim AS base
 
 ARG NPM_REGISTRY=https://registry.npmjs.org
 
