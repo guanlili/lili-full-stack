@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -146,7 +146,7 @@ jobs:
       POSTGRES_SERVER: localhost
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -229,7 +229,7 @@ jobs:
           rm -f "$RUNNER_TEMP/deploy.env"
 
       - name: 服务器拉代码并重启服务
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@v1.2.5
         env:
           SMOKE_B64: ${{ steps.envfile.outputs.smoke_b64 }}
           ENV_B64: ${{ steps.envfile.outputs.env_b64 }}
