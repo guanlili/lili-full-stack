@@ -21,3 +21,8 @@ __pycache__/
 
 # Shared deployment/backup maintenance lock
 .maintenance.lock
+
+# Playwright e2e 产物
+playwright-report/
+test-results/
+frontend/playwright/.cache/

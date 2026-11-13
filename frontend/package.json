@@ -10,7 +10,8 @@
     "lint:fix": "biome check --write --unsafe --no-errors-on-unmatched --files-ignore-unknown=true ./",
     "preview": "vite preview",
     "generate-client": "bash scripts/generate-client.sh",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@hey-api/openapi-ts": "0.99.0",
+    "@playwright/test": "^1.65.0",
     "@tanstack/react-query-devtools": "^5.101.0",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/router-plugin": "^1.168.18",

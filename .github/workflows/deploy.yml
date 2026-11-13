@@ -124,9 +124,53 @@ jobs:
             exit 1
           fi
 
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: changethis
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # playwright webServer（uvicorn）连本机 service 容器
+      POSTGRES_SERVER: localhost
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@v7
+        with:
+          save-cache: false
+      - name: 准备环境变量
+        run: cp .env.example .env
+      - name: 安装后端依赖
+        run: uv sync
+      - name: 安装前端依赖
+        working-directory: frontend
+        run: npm ci
+      - name: 安装 Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: 运行 e2e（webServer 自动起 uvicorn + vite）
+        working-directory: frontend
+        run: npx playwright test
+
   deploy:
     name: 部署到服务器
-    needs: [backend, frontend]
+    needs: [backend, frontend, e2e]
     # PR 只跑检查不部署；push 事件本身已限定 master 分支
     if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # 同一生产环境互斥；过期提交在服务器持锁阶段跳过，不假设排队顺序。
