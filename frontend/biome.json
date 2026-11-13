@@ -1,6 +1,12 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "files": {
     "includes": [
       "**",
@@ -9,7 +15,9 @@
       "!**/openapi.json",
       "!**/src/routeTree.gen.ts",
       "!**/src/client/**/*",
-      "!**/src/components/ui/**/*"
+      "!**/src/components/ui/**/*",
+      "!test-results/**",
+      "!playwright-report/**"
     ]
   },
   "linter": {

@@ -31,7 +31,7 @@ const DeleteConfirmation = () => {
       ),
     onSuccess: () => {
       showSuccessToast("账号已成功注销")
-      logout()
+      void logout()
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {

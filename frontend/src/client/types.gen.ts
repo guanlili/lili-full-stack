@@ -149,16 +149,6 @@ export type PrivateUserCreate = {
 };
 
 /**
- * RefreshTokenRequest
- */
-export type RefreshTokenRequest = {
-    /**
-     * Refresh Token
-     */
-    refresh_token: string;
-};
-
-/**
  * RoleCreate
  */
 export type RoleCreate = {
@@ -651,7 +641,7 @@ export type LoginLoginAccessTokenResponses = {
 export type LoginLoginAccessTokenResponse = LoginLoginAccessTokenResponses[keyof LoginLoginAccessTokenResponses];
 
 export type LoginRefreshAccessTokenData = {
-    body: RefreshTokenRequest;
+    body?: never;
     path?: never;
     query?: never;
     url: '/api/v1/login/refresh';
@@ -674,6 +664,22 @@ export type LoginRefreshAccessTokenResponses = {
 };
 
 export type LoginRefreshAccessTokenResponse = LoginRefreshAccessTokenResponses[keyof LoginRefreshAccessTokenResponses];
+
+export type LoginLogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/login/logout';
+};
+
+export type LoginLogoutResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type LoginLogoutResponse = LoginLogoutResponses[keyof LoginLogoutResponses];
 
 export type LoginLogoutAllData = {
     body?: never;

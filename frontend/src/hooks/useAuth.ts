@@ -59,7 +59,13 @@ const useAuth = () => {
     onError: handleError.bind(showErrorToast),
   })
 
-  const logout = () => {
+  const logout = async () => {
+    // refresh token 在 HttpOnly Cookie 里，本地清不掉，必须由后端下发过期
+    try {
+      await LoginService.logout({ throwOnError: true })
+    } catch {
+      // 后端不可达时仍继续本地清理（幂等）
+    }
     clearSession()
     // 取消进行中的请求并清空全部查询缓存：切换账号时绝不能复用
     // 上一账号的身份、列表与详情缓存（包括请求还在途的慢网络场景）

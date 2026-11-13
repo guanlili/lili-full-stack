@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AccessReadAccessData, AccessReadAccessResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
+import type { AccessReadAccessData, AccessReadAccessResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginLogoutData, LoginLogoutResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -148,15 +148,24 @@ export class Login {
     /**
      * Refresh Access Token
      */
-    public static refreshAccessToken<ThrowOnError extends boolean = false>(options: Options<LoginRefreshAccessTokenData, ThrowOnError>): RequestResult<LoginRefreshAccessTokenResponses, LoginRefreshAccessTokenErrors, ThrowOnError> {
-        return (options.client ?? client).post<LoginRefreshAccessTokenResponses, LoginRefreshAccessTokenErrors, ThrowOnError>({
+    public static refreshAccessToken<ThrowOnError extends boolean = false>(options?: Options<LoginRefreshAccessTokenData, ThrowOnError>): RequestResult<LoginRefreshAccessTokenResponses, LoginRefreshAccessTokenErrors, ThrowOnError> {
+        return (options?.client ?? client).post<LoginRefreshAccessTokenResponses, LoginRefreshAccessTokenErrors, ThrowOnError>({
             responseType: 'json',
             url: '/api/v1/login/refresh',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
+            ...options
+        });
+    }
+    
+    /**
+     * Logout
+     *
+     * Clear the refresh cookie (server-side token expires on its own rotation).
+     */
+    public static logout<ThrowOnError extends boolean = false>(options?: Options<LoginLogoutData, ThrowOnError>): RequestResult<LoginLogoutResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).post<LoginLogoutResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/login/logout',
+            ...options
         });
     }
     

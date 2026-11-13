@@ -103,11 +103,8 @@ class Message(SQLModel):
 class Token(SQLModel):
     access_token: str
     token_type: str = "bearer"
+    # refresh token 不再经响应体下发（HttpOnly Cookie，见 login 路由），字段保留作兼容
     refresh_token: str | None = None
-
-
-class RefreshTokenRequest(SQLModel):
-    refresh_token: str = Field(min_length=32, max_length=256)
 
 
 # Contents of JWT token

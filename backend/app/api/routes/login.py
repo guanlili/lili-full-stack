@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -23,7 +23,6 @@ from app.models import (
     Message,
     NewPassword,
     RefreshToken,
-    RefreshTokenRequest,
     Token,
     User,
     UserPublic,
@@ -40,6 +39,29 @@ router = APIRouter(tags=["login"])
 
 logger = logging.getLogger(__name__)
 
+# refresh token 走 HttpOnly Cookie（前端 JS 不可读，XSS 无法窃取长命凭据）；
+# Path 限定到刷新端点，其他请求不会携带。SameSite=Lax 阻止跨站 POST 携带，
+# 天然防 CSRF，无需额外 CSRF token。
+REFRESH_COOKIE = "refresh_token"
+REFRESH_COOKIE_PATH = f"{settings.API_V1_STR}/login/refresh"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        httponly=True,
+        # local 开发走 http（vite:5173 → backend:8000），Secure 只在生产/预发开启
+        secure=settings.ENVIRONMENT != "local",
+        samesite="lax",
+        path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH)
+
 
 class DemoCredentials(BaseModel):
     username: EmailStr
@@ -50,6 +72,7 @@ class DemoCredentials(BaseModel):
 @limiter.limit(settings.RATE_LIMIT_LOGIN)
 def login_access_token(
     request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    response: Response,
     session: SessionDep,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
@@ -74,7 +97,6 @@ def login_access_token(
             actor=user,
             action="login.failed",
             resource_type="session",
-            resource_id=user.id,
             details={"email": form_data.username, "reason": "inactive_user"},
         )
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -89,21 +111,30 @@ def login_access_token(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token = issue_refresh_token(session=session, user_id=user.id)
     session.commit()
+    # 长命 refresh token 只经 HttpOnly Cookie 下发（见 REFRESH_COOKIE 注释），
+    # 响应体不再携带；短命 access token 走 Authorization header
+    _set_refresh_cookie(response, refresh_token)
     return Token(
         access_token=security.create_access_token(
             user.id,
             expires_delta=access_token_expires,
             token_version=user.token_version,
         ),
-        refresh_token=refresh_token,
     )
 
 
 @router.post("/login/refresh", response_model=Token)
-def refresh_access_token(*, session: SessionDep, body: RefreshTokenRequest) -> Token:
+def refresh_access_token(
+    *,
+    response: Response,
+    session: SessionDep,
+    refresh_cookie: Annotated[str | None, Cookie(alias=REFRESH_COOKIE)] = None,
+) -> Token:
+    if not refresh_cookie:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
     token = session.exec(
         select(RefreshToken).where(
-            col(RefreshToken.token_hash) == hash_refresh_token(body.refresh_token)
+            col(RefreshToken.token_hash) == hash_refresh_token(refresh_cookie)
         )
     ).first()
     now = datetime.now(UTC)
@@ -131,23 +162,33 @@ def refresh_access_token(*, session: SessionDep, body: RefreshTokenRequest) -> T
     token.revoked_at = now
     new_refresh_token = issue_refresh_token(session=session, user_id=user.id)
     session.commit()
+    _set_refresh_cookie(response, new_refresh_token)
     return Token(
         access_token=security.create_access_token(
             user.id,
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             token_version=user.token_version,
         ),
-        refresh_token=new_refresh_token,
     )
 
 
+@router.post("/login/logout", response_model=Message)
+def logout(response: Response) -> Message:
+    """Clear the refresh cookie (server-side token expires on its own rotation)."""
+    _clear_refresh_cookie(response)
+    return Message(message="Logged out")
+
+
 @router.post("/login/logout-all", response_model=Message)
-def logout_all(*, session: SessionDep, current_user: CurrentUser) -> Message:
+def logout_all(
+    *, response: Response, session: SessionDep, current_user: CurrentUser
+) -> Message:
     """Revoke all existing access tokens for the current user."""
     current_user.token_version += 1
     revoke_user_refresh_tokens(session=session, user_id=current_user.id)
     session.add(current_user)
     session.commit()
+    _clear_refresh_cookie(response)
     record_audit(
         session=session,
         actor=current_user,

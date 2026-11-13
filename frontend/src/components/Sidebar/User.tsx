@@ -54,8 +54,8 @@ export function User({ user }: { user: UserPublic | null | undefined }) {
       setOpenMobile(false)
     }
   }
-  const handleLogout = async () => {
-    logout()
+  const handleLogout = () => {
+    void logout()
   }
 
   return (

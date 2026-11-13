@@ -92,21 +92,55 @@ def test_refresh_token_rotation(client: TestClient) -> None:
         },
     )
     assert login.status_code == 200
-    first_refresh_token = login.json()["refresh_token"]
+    # refresh token 只经 HttpOnly Cookie 下发，响应体不得携带
+    set_cookie = login.headers["set-cookie"]
+    assert "HttpOnly" in set_cookie
+    assert "SameSite=lax" in set_cookie
+    assert f"Path={settings.API_V1_STR}/login/refresh" in set_cookie
+    assert login.json().get("refresh_token") is None
+    first_refresh_cookie = client.cookies.get("refresh_token")
+    assert first_refresh_cookie
 
-    refreshed = client.post(
-        f"{settings.API_V1_STR}/login/refresh",
-        json={"refresh_token": first_refresh_token},
-    )
+    refreshed = client.post(f"{settings.API_V1_STR}/login/refresh")
     assert refreshed.status_code == 200
-    second_refresh_token = refreshed.json()["refresh_token"]
-    assert second_refresh_token != first_refresh_token
+    assert refreshed.json().get("refresh_token") is None
+    second_refresh_cookie = client.cookies.get("refresh_token")
+    assert second_refresh_cookie
+    assert second_refresh_cookie != first_refresh_cookie
 
-    reused = client.post(
-        f"{settings.API_V1_STR}/login/refresh",
-        json={"refresh_token": first_refresh_token},
+    # 旧 cookie 已被轮换消费，重放必须 401
+    client.cookies.clear()
+    client.cookies.set(
+        "refresh_token",
+        first_refresh_cookie,
+        domain="testserver",
+        path=f"{settings.API_V1_STR}/login/refresh",
     )
+    reused = client.post(f"{settings.API_V1_STR}/login/refresh")
     assert reused.status_code == 401
+
+
+def test_refresh_without_cookie_is_401(client: TestClient) -> None:
+    client.cookies.clear()
+    r = client.post(f"{settings.API_V1_STR}/login/refresh")
+    assert r.status_code == 401
+
+
+def test_logout_clears_refresh_cookie(client: TestClient) -> None:
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={
+            "username": settings.FIRST_SUPERUSER,
+            "password": settings.FIRST_SUPERUSER_PASSWORD,
+        },
+    )
+    assert login.status_code == 200
+    assert client.cookies.get("refresh_token")
+
+    r = client.post(f"{settings.API_V1_STR}/login/logout")
+    assert r.status_code == 200
+    assert client.cookies.get("refresh_token") is None
+    assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
 
 
 def test_use_access_token(
@@ -308,15 +342,14 @@ def test_concurrent_refresh_consumes_token_once(client: TestClient) -> None:
             "password": settings.FIRST_SUPERUSER_PASSWORD,
         },
     )
-    token = login.json()["refresh_token"]
+    assert login.status_code == 200
+    assert client.cookies.get("refresh_token")
     barrier = Barrier(2)
 
+    # 两个线程共用同一 client（同一 cookie jar），并发携带同一 refresh cookie
     def refresh() -> int:
         barrier.wait(timeout=10)
-        return client.post(
-            f"{settings.API_V1_STR}/login/refresh",
-            json={"refresh_token": token},
-        ).status_code
+        return client.post(f"{settings.API_V1_STR}/login/refresh").status_code
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [pool.submit(refresh) for _ in range(2)]
@@ -344,15 +377,7 @@ def test_password_reset_revokes_persisted_sessions(
         },
     )
     assert response.status_code == 200
-    assert (
-        client.post(
-            f"{settings.API_V1_STR}/login/refresh",
-            json={
-                "refresh_token": login["refresh_token"],
-            },
-        ).status_code
-        == 401
-    )
+    assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
     assert (
         client.get(
             f"{settings.API_V1_STR}/users/me",
@@ -371,10 +396,14 @@ def test_admin_password_change_revokes_refresh_token(
     user = create_user(
         session=db, user_create=UserCreate(email=email, password=password)
     )
-    login = client.post(
-        f"{settings.API_V1_STR}/login/access-token",
-        data={"username": email, "password": password},
-    ).json()
+    # 登录以获得 refresh cookie（cookie jar 存于共享的 client 上）
+    assert (
+        client.post(
+            f"{settings.API_V1_STR}/login/access-token",
+            data={"username": email, "password": password},
+        ).status_code
+        == 200
+    )
     assert (
         client.patch(
             f"{settings.API_V1_STR}/users/{user.id}",
@@ -383,15 +412,7 @@ def test_admin_password_change_revokes_refresh_token(
         ).status_code
         == 200
     )
-    assert (
-        client.post(
-            f"{settings.API_V1_STR}/login/refresh",
-            json={
-                "refresh_token": login["refresh_token"],
-            },
-        ).status_code
-        == 401
-    )
+    assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
 
 
 def _bearer(token: str) -> dict[str, str]:
