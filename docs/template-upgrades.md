@@ -21,8 +21,9 @@
 | 审计独立事务 | `backend/app/core/audit.py` | 直接整文件替换即可；调用方签名不变 |
 | 连接池可配 + 优雅关闭 | `backend/app/core/db.py`、`config.py`、`main.py` | 已自定义池参数的项目按新配置项核对；lifespan 与已有启动逻辑合并时注意保留 dispose |
 | 日志统一 | `backend/app/core/logging.py`、`main.py`、prestart 系列脚本 | 客户项目自有 basicConfig 可保留（幂等），建议统一到 configure_logging |
+| 审计查看界面 | `backend/app/api/routes/audit.py`、`core/permissions.py`、`frontend/src/routes/_layout/admin/`、`AuditPanel`、`useAuditLogs`、`lib/toast.ts` | API 新增需 `npm run generate-client`；同步 `routeTree.gen.ts`；sonner 懒加载要求 toast 调用统一走 `lib/toast`（直接 import "sonner" 的调用会绕过队列） |
 
-本批无数据库迁移；API 契约不变。
+本批无数据库迁移；审计查看为新增 API。
 
 ## 2026.11.14 – 2026.11.21 批次（e2e 回归 / Refresh Cookie / P0-P2 维护）
 
