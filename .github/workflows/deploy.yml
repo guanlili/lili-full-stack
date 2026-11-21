@@ -105,6 +105,10 @@ jobs:
       - name: 类型检查 + 构建
         working-directory: frontend
         run: npm run build
+      # CSP 放行的内联脚本哈希与构建产物漂移时拦下（改 index.html 主题脚本须同步 nginx.conf）
+      - name: 校验 CSP 内联脚本哈希
+        working-directory: frontend
+        run: bash scripts/check-csp-hash.sh
       # 校验 src/client/ 与后端 OpenAPI 一致：后端接口改了但忘记 generate-client 时在这里拦下
       - uses: astral-sh/setup-uv@v7
         with:

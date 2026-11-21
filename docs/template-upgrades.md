@@ -13,6 +13,26 @@
 5. 阅读每批更新的数据库/API兼容性说明；需要时生成迁移和客户端，并执行客户业务验收与模板回归。
 6. 通过 PR 评审和 CI 后发布，记录采用版本及未采用的改进。
 
+## 2026.11.22 批次（运维与安全收尾）
+
+| 改进 | 主要文件 | 同步注意事项 |
+|------|----------|--------------|
+| CSP 强制 + 哈希漂移守卫 | `frontend/nginx.conf`、`frontend/scripts/check-csp-hash.sh`、`.github/workflows/deploy.yml` | hash 基于构建产物字节；客户项目改过 index.html 主题脚本须重算（运行守卫脚本即得），CI 接入同款步骤 |
+| 审计独立事务 | `backend/app/core/audit.py` | 直接整文件替换即可；调用方签名不变 |
+| 连接池可配 + 优雅关闭 | `backend/app/core/db.py`、`config.py`、`main.py` | 已自定义池参数的项目按新配置项核对；lifespan 与已有启动逻辑合并时注意保留 dispose |
+| 日志统一 | `backend/app/core/logging.py`、`main.py`、prestart 系列脚本 | 客户项目自有 basicConfig 可保留（幂等），建议统一到 configure_logging |
+
+本批无数据库迁移；API 契约不变。
+
+## 2026.11.14 – 2026.11.21 批次（e2e 回归 / Refresh Cookie / P0-P2 维护）
+
+详见 `CHANGELOG.md` 对应日期条目。同步要点：
+
+- **Refresh Token HttpOnly Cookie（11.19，破坏性）**：后端 `login.py`、`core/sessions.py`、迁移与前端 `lib/session*`、`hooks/useAuth.ts` 必须同一批同步；只同步一侧会导致登录后无法刷新。
+- **P1 安全语义（11.21）**：改邮箱/注销的密码复核是 API 契约变更，需 `npm run generate-client` 并同步前端表单；`UserDeleteMe` 经 DELETE body 传输。
+- **P2 清债（11.21）**：播种对齐后，已有项目数据库中的旧"安慰剂"权限行可保留不动（不影响运行）；限流与分页边界为纯后端替换。
+- e2e 扩到 14 用例且 webServer 需 `RATE_LIMIT_ENABLED=false`（全量套件同 IP 会触发 429），同步 `playwright.config.ts`。
+
 ## 2026.10.16 批次
 
 | 改进 | 主要文件 | 同步注意事项 |
