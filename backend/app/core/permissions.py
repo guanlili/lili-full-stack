@@ -22,6 +22,7 @@ PAGES = (
     PagePermission("/", "dashboard.view", "工作台"),
     PagePermission("/settings", "profile.view", "账号设置"),
     PagePermission("/admin", "users.view", "用户管理"),
+    PagePermission("/admin/audit", "audit.view", "审计日志", admin_only=True),
     PagePermission("/roles", "roles.manage", "角色权限", admin_only=True),
 )
 GRANTABLE_PERMISSIONS = {page.codename for page in PAGES if not page.admin_only}

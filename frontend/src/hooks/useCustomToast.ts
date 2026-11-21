@@ -1,19 +1,7 @@
-import { toast } from "sonner"
+import { toastError, toastSuccess } from "@/lib/toast"
 
 const useCustomToast = () => {
-  const showSuccessToast = (description: string) => {
-    toast.success("操作成功", {
-      description,
-    })
-  }
-
-  const showErrorToast = (description: string) => {
-    toast.error("操作失败", {
-      description,
-    })
-  }
-
-  return { showSuccessToast, showErrorToast }
+  return { showSuccessToast: toastSuccess, showErrorToast: toastError }
 }
 
 export default useCustomToast

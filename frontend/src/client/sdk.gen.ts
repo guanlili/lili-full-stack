@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AccessReadAccessData, AccessReadAccessResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginLogoutData, LoginLogoutErrors, LoginLogoutResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeErrors, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
+import type { AccessReadAccessData, AccessReadAccessResponses, AuditLogsReadAuditLogsData, AuditLogsReadAuditLogsErrors, AuditLogsReadAuditLogsResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginLogoutData, LoginLogoutErrors, LoginLogoutResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeErrors, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -34,6 +34,30 @@ export class Access {
 
 export class AccessService {
     static access = Access;
+}
+
+export class Logs {
+    /**
+     * Read Audit Logs
+     *
+     * 超管分页查询内部审计日志（时间倒序，可按动作/操作者/资源类型过滤）。
+     */
+    public static readAuditLogs<ThrowOnError extends boolean = false>(options?: Options<AuditLogsReadAuditLogsData, ThrowOnError>): RequestResult<AuditLogsReadAuditLogsResponses, AuditLogsReadAuditLogsErrors, ThrowOnError> {
+        return (options?.client ?? client).get<AuditLogsReadAuditLogsResponses, AuditLogsReadAuditLogsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/audit-logs/',
+            ...options
+        });
+    }
+}
+
+export class Audit {
+    static logs = Logs;
+}
+
+export class AuditLogsService {
+    static audit = Audit;
 }
 
 export class Roles {

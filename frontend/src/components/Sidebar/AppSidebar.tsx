@@ -1,4 +1,4 @@
-import { Home, ShieldCheck, Users } from "lucide-react"
+import { History, Home, ShieldCheck, Users } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -22,6 +22,7 @@ export function AppSidebar() {
   const availableItems: NavItem[] = [
     ...baseItems,
     { icon: Users, title: "用户管理", path: "/admin" },
+    { icon: History, title: "审计日志", path: "/admin/audit" },
     { icon: ShieldCheck, title: "角色权限", path: "/roles" },
   ]
   const items = availableItems.filter((item) =>

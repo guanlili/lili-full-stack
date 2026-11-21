@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query"
 import axios from "axios"
-import { toast } from "sonner"
 import { expireSession } from "@/lib/session"
+import { toastErrorMessage } from "@/lib/toast"
 
 const handleApiError = (error: Error) => {
   if (axios.isCancel(error)) return
@@ -13,9 +13,9 @@ const handleApiError = (error: Error) => {
   }
 
   if (axios.isAxiosError(error) && error.response?.status === 403) {
-    toast.error("没有权限执行此操作")
+    toastErrorMessage("没有权限执行此操作")
   } else {
-    toast.error("请求失败，请稍后重试")
+    toastErrorMessage("请求失败，请稍后重试")
   }
 }
 

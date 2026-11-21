@@ -23,6 +23,60 @@ export type AccessPublic = {
 };
 
 /**
+ * AuditLogPublic
+ */
+export type AuditLogPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Actor User Id
+     */
+    actor_user_id?: string | null;
+    /**
+     * Actor Email
+     */
+    actor_email?: string | null;
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Resource Type
+     */
+    resource_type: string;
+    /**
+     * Resource Id
+     */
+    resource_id?: string | null;
+    /**
+     * Details
+     */
+    details?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+};
+
+/**
+ * AuditLogsPublic
+ */
+export type AuditLogsPublic = {
+    /**
+     * Data
+     */
+    data: Array<AuditLogPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type BodyLoginLoginAccessToken = {
@@ -465,6 +519,52 @@ export type AccessReadAccessResponses = {
 };
 
 export type AccessReadAccessResponse = AccessReadAccessResponses[keyof AccessReadAccessResponses];
+
+export type AuditLogsReadAuditLogsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Action
+         */
+        action?: string | null;
+        /**
+         * Actor User Id
+         */
+        actor_user_id?: string | null;
+        /**
+         * Resource Type
+         */
+        resource_type?: string | null;
+    };
+    url: '/api/v1/audit-logs/';
+};
+
+export type AuditLogsReadAuditLogsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AuditLogsReadAuditLogsError = AuditLogsReadAuditLogsErrors[keyof AuditLogsReadAuditLogsErrors];
+
+export type AuditLogsReadAuditLogsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditLogsPublic;
+};
+
+export type AuditLogsReadAuditLogsResponse = AuditLogsReadAuditLogsResponses[keyof AuditLogsReadAuditLogsResponses];
 
 export type RolesDeleteRoleData = {
     body?: never;

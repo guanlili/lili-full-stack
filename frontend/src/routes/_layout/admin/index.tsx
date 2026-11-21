@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import UsersPanel from "@/components/Admin/UsersPanel"
 import { APP_NAME } from "@/config"
 
-export const Route = createFileRoute("/_layout/admin")({
+export const Route = createFileRoute("/_layout/admin/")({
   component: Admin,
   head: () => ({ meta: [{ title: `用户管理 - ${APP_NAME}` }] }),
 })
