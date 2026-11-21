@@ -2,6 +2,40 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.22 — 运维与安全收尾
+
+- CSP 从 Report-Only 转强制：唯一放行的内联脚本是 index.html 主题防闪白脚本，以构建产物字节计算 sha256 写入 nginx；新增 `frontend/scripts/check-csp-hash.sh` 并接入 CI，改主题脚本未同步 hash 时构建拦截。
+- 审计写入改独立事务：`record_audit` 用调用方 Session 的同一 bind 新开连接提交，审计失败不再回滚业务写入（也修复了失败路径误 rollback 调用方事务的隐患）。
+- 数据库连接池参数可配（`DB_POOL_SIZE` / `DB_MAX_OVERFLOW` / `DB_POOL_RECYCLE`，默认 5/10/1800）；FastAPI lifespan 关停时 `engine.dispose()` 归还连接。
+- 日志统一入口 `configure_logging()`（时间戳/级别/logger 名格式），移除 5 处散落的 `logging.basicConfig`；独立脚本（prestart 系列）调用同一入口。
+
+数据库：无表结构变更，无需迁移。API：请求/响应契约不变，无需重新生成客户端。兼容性：自定义过连接池的项目按新配置项核对；审计行为变化仅在异常路径。
+
+## 2026.11.21 — 模板三批维护：初始化修复 / P1 安全语义 / P2 清债
+
+- 初始化修复（#74/#75）：`init_project.py` 补 `subprocess` import；未装 devledger 的机器上 `pm_script=None` 直接 isfile 会 TypeError，均已修复；`main()` 增加真实入口冒烟回归堵住 CI 只测 `initialize()` 的盲区。
+- P1 安全语义（#76/#77）：
+  - refresh cookie 的 `Path` 放宽到 `/login` 前缀（原来限定 `/login/refresh` 时 logout 收不到 cookie）；logout 按哈希吊销服务端 refresh token 并写 `session.logout` 审计；
+  - 改绑邮箱（`UserUpdateMe.current_password`）与自助注销（`UserDeleteMe` body）强制密码复核，补 `user.self_updated` / `user.self_deleted` 审计（注销审计先于删行落库）；
+  - 非 local 环境不挂载 `/docs` `/redoc` `/openapi.json`；nginx 增加 CSP（先 Report-Only）；
+  - e2e 从 6 用例扩到 14（新增 admin-users / roles / 密码找回 / settings 四主线）；playwright 后端 webServer 关限流防全量套件触发 429。
+- P2 清债（#78/#79）：`/login/refresh`（30/min）与 `/users/signup`（5/min）补限流；`read_roles` 聚合查询消 N+1；播种对齐 PAGES 注册表（移除 `users.read` 等"安慰剂"权限与装饰性 admin 角色）；`read_users` 分页边界（skip≥0、1≤limit≤200）；CI 加固（GITHUB_TOKEN 最小权限、job 超时、Chromium 缓存、e2e 失败 artifact、服务器镜像按 sha 清理旧 tag）；README/deployment.md 文档漂移 6 处修正；删除零引用死代码（前端 6 文件约 640 行 + `AuditLogPublic` 死 schema）；`logoutAll` 兜底、错误页翻译文案。
+
+数据库：无表结构变更。API：**有契约变更**——`UserUpdateMe` 新增可选 `current_password`、`DELETE /users/me` 新增必填 body、`GET /users` 分页参数加边界校验，需重新生成客户端并同步前端调用。兼容性：旧前端调用改邮箱/注销接口会收到 400/422；生产环境 `/docs` 不再可访问。
+
+## 2026.11.19 — Refresh Token 改 HttpOnly Cookie（#68）
+
+- refresh token 只经 HttpOnly Cookie 下发（`Path` 限定刷新端点、`SameSite=Lax`），响应体不再携带；access token 保留 15 分钟短命走 Authorization header，前端拦截器防回放机制零改动。
+- 新增 `/login/logout` 清 cookie、`/login/logout-all` 吊销全部会话；XSS 无法窃取长命凭据。
+
+数据库：`refresh_token` 表增加哈希列与吊销时间（随迁移交付）。API：登录响应体不再返回 `refresh_token` 字段。兼容性：**破坏性变更**，前端必须同步升级（配套的会话刷新拦截器一并发布）。
+
+## 2026.11.14 — Playwright e2e 回归（#67）
+
+- 恢复 Playwright e2e：登录/注册/权限重定向/登出 6 用例，webServer 起 uvicorn+vite 全真栈；CI e2e job 纳入部署门槛。浏览器把 localhost 解析为 ::1，e2e 全链路统一 127.0.0.1。
+
+数据库/API：无变更。
+
 ## 2026.11.11 — README 项目化标准与 devledger 路径修复
 
 - 修复 `init_project.py` 检测 devledger 只认 `~/devledger` 旧路径的问题：改为 `~/.agents/skills/devledger`（标准安装路径）优先、旧路径兜底，安装提示同步更新；此前走标准安装的机器上自动接入静默失效。
@@ -13,7 +47,7 @@
 
 兼容性：已有项目无需动作；若本机 devledger 装在 `~/devledger` 继续可用，建议逐步迁移到标准路径。
 
-## 2026.10.16 — 认证加固## 2026.10.16 — 认证加固
+## 2026.10.16 — 认证加固
 
 - JWT 增加 `typ` 类型声明：密码重置链接不能当 Access Token 使用，Access Token 也不能用于重置密码。缺少 `typ`/`ver` 或 `sub` 不是 UUID 的令牌统一返回 401（此前部分情况返回 500）。
 - 密码重置链接绑定 `token_version`，成功重置、修改密码或“退出所有设备”后旧链接立即失效；同一链接并发提交只会成功一次。

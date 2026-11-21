@@ -7,7 +7,13 @@ from app.models import SeedUserCreate, User
 
 # pre_ping replaces pooled connections dropped by a database restart instead of
 # failing the first request that reuses them.
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI), pool_pre_ping=True)
+engine = create_engine(
+    str(settings.SQLALCHEMY_DATABASE_URI),
+    pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_recycle=settings.DB_POOL_RECYCLE,
+)
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB

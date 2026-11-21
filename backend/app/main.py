@@ -1,6 +1,8 @@
 import logging
 import re
 import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import sentry_sdk
 from fastapi import FastAPI
@@ -10,7 +12,12 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.core.db import engine
 from app.core.limiter import limiter, rate_limit_exceeded_handler
+from app.core.logging import configure_logging
+
+# 应用日志统一格式（幂等）；独立运行的脚本（prestart 等）各自调用同一入口
+configure_logging()
 
 # Fraction of requests traced by Sentry; full tracing quickly exhausts quotas.
 SENTRY_TRACES_SAMPLE_RATE = 0.1
@@ -20,6 +27,13 @@ REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 def custom_generate_unique_id(route: APIRoute) -> str:
     return f"{route.tags[0]}-{route.name}"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    yield
+    # 优雅关停：归还连接池中的数据库连接
+    engine.dispose()
 
 
 if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
@@ -32,6 +46,7 @@ docs_enabled = settings.ENVIRONMENT == "local"
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    lifespan=lifespan,
     openapi_url=f"{settings.API_V1_STR}/openapi.json" if docs_enabled else None,
     docs_url="/docs" if docs_enabled else None,
     redoc_url="/redoc" if docs_enabled else None,

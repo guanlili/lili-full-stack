@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = ""
     # 测试专用库（conftest 会拒绝它指向开发库）。默认挂在同一实例上，CI/本地零配置
     POSTGRES_DB_TEST: str = "app_test"
+    # 连接池：多 worker 部署时每 worker 独立池（池上限 × worker 数 < PG max_connections）
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_RECYCLE: int = 1800
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -11,7 +11,6 @@ from app.core.config import settings
 from app.models import Message
 from app.utils import generate_test_email, send_email
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/utils", tags=["utils"])
