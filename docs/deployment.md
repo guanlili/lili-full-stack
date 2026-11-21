@@ -46,12 +46,12 @@ git clone git@github.com:guanlili/<项目名>.git $DEPLOY_PATH
 之后 push 到 `master` 会触发：
 
 ```text
-CI（后端 lint + 测试、前端 lint + 构建、客户端一致性）
+CI（后端 lint + 测试、前端 lint + 构建、客户端一致性、Playwright e2e）
 → 服务器 checkout 到 CI 验证过的 commit
 → 从 Secrets 生成 .env
 → 现场构建镜像（Python/npm 依赖经国内镜像源下载）、运行 Alembic 迁移
 → 重启容器、执行 readiness 检查
-→ 清理旧镜像
+→ 清理旧镜像（dangling + 非本次 sha 的旧 tag）
 ```
 
 > 大陆服务器依赖下载要点：

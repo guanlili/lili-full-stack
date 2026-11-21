@@ -1,9 +1,11 @@
 import { type ErrorComponentProps, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
+import { extractErrorMessage } from "@/utils"
 
 const ErrorComponent = ({ error, reset }: ErrorComponentProps) => {
   const router = useRouter()
-  const errorMessage = error instanceof Error ? error.message : String(error)
+  // 翻译成友好文案；原始 error 对象保留在闭包里供 Sentry 等上报使用
+  const errorMessage = extractErrorMessage(error)
 
   return (
     <div

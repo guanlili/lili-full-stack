@@ -7,6 +7,8 @@ from app.core.limiter import limiter
 # 限流限额与 config.py 默认值联动；修改配置时同步这里
 LOGIN_LIMIT = 10
 RECOVERY_LIMIT = 5
+REFRESH_LIMIT = 30
+SIGNUP_LIMIT = 5
 
 
 @pytest.fixture(autouse=True)
@@ -63,6 +65,23 @@ def test_password_recovery_rate_limited(client: TestClient) -> None:
         r = client.post(f"{settings.API_V1_STR}/password-recovery/nobody@example.com")
         assert r.status_code == 200
     r = client.post(f"{settings.API_V1_STR}/password-recovery/nobody@example.com")
+    assert r.status_code == 429
+
+
+def test_refresh_rate_limited(client: TestClient) -> None:
+    # 无有效 cookie 也计次（限流在业务校验之前）；防无凭据刷库
+    for _ in range(REFRESH_LIMIT):
+        assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
+    assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 429
+
+
+def test_signup_rate_limited(client: TestClient) -> None:
+    # 密码须过弱口令黑名单：422 校验发生在限流装饰器之前，无效请求不计次
+    body = {"email": "nobody@example.com", "password": "N0body-s3cret-pass"}
+    # 注册开关开或关都计次（开关关闭返回 403，同样消耗限额）
+    for _ in range(SIGNUP_LIMIT):
+        client.post(f"{settings.API_V1_STR}/users/signup", json=body)
+    r = client.post(f"{settings.API_V1_STR}/users/signup", json=body)
     assert r.status_code == 429
 
 

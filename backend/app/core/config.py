@@ -115,6 +115,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_RECOVERY: str = "5/minute"
+    # refresh 每次过期才触发（前端单飞），但无 cookie 校验直接打 DB 查询，需防刷
+    RATE_LIMIT_REFRESH: str = "30/minute"
+    # 开放注册时的建号接口防账号垃圾塞
+    RATE_LIMIT_SIGNUP: str = "5/minute"
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 

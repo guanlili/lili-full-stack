@@ -1,7 +1,7 @@
 import uuid
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -13,6 +13,7 @@ from app.api.deps import (
 )
 from app.core.audit import record_audit
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.security import get_password_hash, verify_password
 from app.core.sessions import delete_user_refresh_tokens, revoke_user_refresh_tokens
 from app.models import (
@@ -38,7 +39,11 @@ router = APIRouter(prefix="/users", tags=["users"])
     dependencies=[Depends(require_permission("users.view"))],
     response_model=UsersPublic,
 )
-def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+def read_users(
+    session: SessionDep,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> Any:
     """
     Retrieve users.
     """
@@ -214,7 +219,12 @@ def delete_user_me(
 
 
 @router.post("/signup", response_model=UserPublic)
-def register_user(session: SessionDep, user_in: UserRegister) -> Any:
+@limiter.limit(settings.RATE_LIMIT_SIGNUP)
+def register_user(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    session: SessionDep,
+    user_in: UserRegister,
+) -> Any:
     """
     Create new user without the need to be logged in.
     """
