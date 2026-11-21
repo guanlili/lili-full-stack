@@ -1,6 +1,7 @@
 """Regression tests use temporary copies and a local HTTP server, never project secrets."""
 
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -35,7 +36,10 @@ class MainSmokeTests(unittest.TestCase):
             shutil.copy(ROOT / name, target)
 
     def test_main_initializes_env_and_exits_clean(self):
-        # cwd 指向临时目录：内部 git remote 查不到 origin，稳定走 devledger 提示分支
+        # cwd 指向临时目录（git remote 查不到 origin）；HOME 指向空目录强制走
+        # "未安装 devledger"分支（pm_script=None）——CI 无 devledger 曾在此 TypeError
+        empty_home = self.root / "home"
+        empty_home.mkdir()
         result = subprocess.run(
             [
                 sys.executable,
@@ -45,6 +49,7 @@ class MainSmokeTests(unittest.TestCase):
                 "8086",
             ],
             cwd=self.root,
+            env={**os.environ, "HOME": str(empty_home)},
             text=True,
             capture_output=True,
             check=False,
@@ -54,6 +59,7 @@ class MainSmokeTests(unittest.TestCase):
         self.assertEqual(env.stat().st_mode & 0o777, 0o600)
         self.assertIn("APP_PORT=8086", env.read_text())
         self.assertIn("初始化完成", result.stdout)
+        self.assertIn("提示", result.stdout)
 
 
 class InitializationTests(unittest.TestCase):

@@ -118,7 +118,8 @@ def main() -> None:
         ["git", "remote", "get-url", "origin"], capture_output=True, text=True
     ).stdout.strip()
     m = re.search(r"[:/]([^/:]+/[^/.]+)(?:\.git)?$", origin) if origin else None
-    if os.path.isfile(pm_script) and m and shutil.which("gh"):
+    # pm_script 在未安装 devledger 的机器上是 None，必须先判空再 isfile
+    if pm_script and os.path.isfile(pm_script) and m and shutil.which("gh"):
         print("检测到 devledger，自动接入项目管理（建 Project + 激活占位符）...")
         code = subprocess.run(["bash", pm_script, m.group(1), "--local", ROOT]).returncode
         print("devledger 接入完成" if code == 0 else f"devledger 接入失败（exit {code}），可稍后手动运行：bash {pm_script} {m.group(1)} --local {ROOT}")
