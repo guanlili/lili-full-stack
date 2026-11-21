@@ -27,9 +27,14 @@ if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
         dsn=str(settings.SENTRY_DSN), traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE
     )
 
+# 交互式文档只在本地方便调试；预发/生产直接不挂载（含 openapi.json，不暴露 API 面）
+docs_enabled = settings.ENVIRONMENT == "local"
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if docs_enabled else None,
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
     generate_unique_id_function=custom_generate_unique_id,
 )
 # 认证敏感接口限流（见 app/core/limiter.py 与 login 路由）

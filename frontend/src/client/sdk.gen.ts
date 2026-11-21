@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AccessReadAccessData, AccessReadAccessResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginLogoutData, LoginLogoutResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
+import type { AccessReadAccessData, AccessReadAccessResponses, LoginDemoCredentialsData, LoginDemoCredentialsResponses, LoginLoginAccessTokenData, LoginLoginAccessTokenErrors, LoginLoginAccessTokenResponses, LoginLogoutAllData, LoginLogoutAllResponses, LoginLogoutData, LoginLogoutErrors, LoginLogoutResponses, LoginRecoverPasswordData, LoginRecoverPasswordErrors, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentErrors, LoginRecoverPasswordHtmlContentResponses, LoginRecoverPasswordResponses, LoginRefreshAccessTokenData, LoginRefreshAccessTokenErrors, LoginRefreshAccessTokenResponses, LoginResetPasswordData, LoginResetPasswordErrors, LoginResetPasswordResponses, LoginTestTokenData, LoginTestTokenResponses, PrivateCreateUserData, PrivateCreateUserErrors, PrivateCreateUserResponses, RolesCreateRoleData, RolesCreateRoleErrors, RolesCreateRoleResponses, RolesDeleteRoleData, RolesDeleteRoleErrors, RolesDeleteRoleResponses, RolesReadRolesData, RolesReadRolesResponses, RolesReadUserRolesData, RolesReadUserRolesErrors, RolesReadUserRolesResponses, RolesUpdatePermissionsData, RolesUpdatePermissionsErrors, RolesUpdatePermissionsResponses, RolesUpdateUserRolesData, RolesUpdateUserRolesErrors, RolesUpdateUserRolesResponses, UsersCreateUserData, UsersCreateUserErrors, UsersCreateUserResponses, UsersDeleteUserData, UsersDeleteUserErrors, UsersDeleteUserMeData, UsersDeleteUserMeErrors, UsersDeleteUserMeResponses, UsersDeleteUserResponses, UsersReadUserByIdData, UsersReadUserByIdErrors, UsersReadUserByIdResponses, UsersReadUserMeData, UsersReadUserMeResponses, UsersReadUsersData, UsersReadUsersErrors, UsersReadUsersResponses, UsersRegisterUserData, UsersRegisterUserErrors, UsersRegisterUserResponses, UsersUpdatePasswordMeData, UsersUpdatePasswordMeErrors, UsersUpdatePasswordMeResponses, UsersUpdateUserData, UsersUpdateUserErrors, UsersUpdateUserMeData, UsersUpdateUserMeErrors, UsersUpdateUserMeResponses, UsersUpdateUserResponses, UtilsHealthCheckData, UtilsHealthCheckResponses, UtilsReadyCheckData, UtilsReadyCheckResponses, UtilsTestEmailData, UtilsTestEmailErrors, UtilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -159,10 +159,10 @@ export class Login {
     /**
      * Logout
      *
-     * Clear the refresh cookie (server-side token expires on its own rotation).
+     * Clear the refresh cookie and revoke its server-side token.
      */
-    public static logout<ThrowOnError extends boolean = false>(options?: Options<LoginLogoutData, ThrowOnError>): RequestResult<LoginLogoutResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).post<LoginLogoutResponses, unknown, ThrowOnError>({
+    public static logout<ThrowOnError extends boolean = false>(options?: Options<LoginLogoutData, ThrowOnError>): RequestResult<LoginLogoutResponses, LoginLogoutErrors, ThrowOnError> {
+        return (options?.client ?? client).post<LoginLogoutResponses, LoginLogoutErrors, ThrowOnError>({
             responseType: 'json',
             url: '/api/v1/login/logout',
             ...options
@@ -297,12 +297,16 @@ export class Users {
      *
      * Delete own user.
      */
-    public static deleteUserMe<ThrowOnError extends boolean = false>(options?: Options<UsersDeleteUserMeData, ThrowOnError>): RequestResult<UsersDeleteUserMeResponses, unknown, ThrowOnError> {
-        return (options?.client ?? client).delete<UsersDeleteUserMeResponses, unknown, ThrowOnError>({
+    public static deleteUserMe<ThrowOnError extends boolean = false>(options: Options<UsersDeleteUserMeData, ThrowOnError>): RequestResult<UsersDeleteUserMeResponses, UsersDeleteUserMeErrors, ThrowOnError> {
+        return (options.client ?? client).delete<UsersDeleteUserMeResponses, UsersDeleteUserMeErrors, ThrowOnError>({
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me',
-            ...options
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
         });
     }
     

@@ -40,10 +40,11 @@ router = APIRouter(tags=["login"])
 logger = logging.getLogger(__name__)
 
 # refresh token 走 HttpOnly Cookie（前端 JS 不可读，XSS 无法窃取长命凭据）；
-# Path 限定到刷新端点，其他请求不会携带。SameSite=Lax 阻止跨站 POST 携带，
-# 天然防 CSRF，无需额外 CSRF token。
+# Path 限定到登录端点族（/login/*），业务接口不会携带。SameSite=Lax 阻止跨站
+# POST 携带，天然防 CSRF，无需额外 CSRF token。不能只限 /login/refresh——
+# logout 也需要读到 cookie 才能吊销服务端 token。
 REFRESH_COOKIE = "refresh_token"
-REFRESH_COOKIE_PATH = f"{settings.API_V1_STR}/login/refresh"
+REFRESH_COOKIE_PATH = f"{settings.API_V1_STR}/login"
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
@@ -173,9 +174,31 @@ def refresh_access_token(
 
 
 @router.post("/login/logout", response_model=Message)
-def logout(response: Response) -> Message:
-    """Clear the refresh cookie (server-side token expires on its own rotation)."""
+def logout(
+    *,
+    response: Response,
+    session: SessionDep,
+    refresh_cookie: Annotated[str | None, Cookie(alias=REFRESH_COOKIE)] = None,
+) -> Message:
+    """Clear the refresh cookie and revoke its server-side token."""
     _clear_refresh_cookie(response)
+    if refresh_cookie:
+        token = session.exec(
+            select(RefreshToken).where(
+                col(RefreshToken.token_hash) == hash_refresh_token(refresh_cookie)
+            )
+        ).first()
+        if token is not None and token.revoked_at is None:
+            token.revoked_at = datetime.now(UTC)
+            session.add(token)
+            session.commit()
+            record_audit(
+                session=session,
+                actor=session.get(User, token.user_id),
+                action="session.logout",
+                resource_type="session",
+                resource_id=token.user_id,
+            )
     return Message(message="Logged out")
 
 
