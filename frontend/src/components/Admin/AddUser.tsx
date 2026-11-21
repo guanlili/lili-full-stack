@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { PasswordInput } from "@/components/ui/password-input"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -153,10 +154,9 @@ const AddUser = () => {
                       设置密码 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input
+                      <PasswordInput
                         autoComplete="new-password"
                         placeholder="至少 8 个字符"
-                        type="password"
                         {...field}
                         required
                       />
@@ -175,10 +175,9 @@ const AddUser = () => {
                       确认密码 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input
+                      <PasswordInput
                         autoComplete="new-password"
                         placeholder="请再次输入密码"
-                        type="password"
                         {...field}
                         required
                       />

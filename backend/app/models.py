@@ -212,6 +212,23 @@ class AuditLog(SQLModel, table=True):
     )
 
 
+class AuditLogPublic(SQLModel):
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None = None
+    # 展示用：LEFT JOIN users 取邮箱；账号已删除时为 null（actor_user_id 仍保留）
+    actor_email: EmailStr | None = None
+    action: str
+    resource_type: str
+    resource_id: str | None = None
+    details: dict[str, Any] | None = None
+    created_at: datetime | None = None
+
+
+class AuditLogsPublic(SQLModel):
+    data: list[AuditLogPublic]
+    count: int
+
+
 class FileAsset(SQLModel, table=True):
     __tablename__ = "file_asset"
 

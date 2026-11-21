@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { RoleDetailPublic } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,6 +36,10 @@ function RoleCard({ role }: { role: RoleDetailPublic }) {
   const deleteBlocked = role.is_default || role.user_count > 0
   const busy = update.isPending || remove.isPending
   const [permissions, setPermissions] = useState(role.permissions)
+  // 服务器数据变化时同步本地勾选（保存成功/其他端修改后的刷新）
+  useEffect(() => {
+    setPermissions(role.permissions)
+  }, [role.permissions])
   return (
     <Card className="shadow-none">
       <CardHeader>
@@ -200,10 +204,7 @@ function Roles() {
         </div>
       )}
       {query.data?.map((role) => (
-        <RoleCard
-          key={`${role.id}:${role.permissions.slice().sort().join()}`}
-          role={role}
-        />
+        <RoleCard key={role.id} role={role} />
       ))}
     </div>
   )

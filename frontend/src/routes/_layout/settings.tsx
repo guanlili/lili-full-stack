@@ -5,6 +5,7 @@ import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { APP_NAME } from "@/config"
 import useAuth from "@/hooks/useAuth"
@@ -44,8 +45,19 @@ export const Route = createFileRoute("/_layout/settings")({
 function UserSettings() {
   const { user: currentUser } = useAuth()
 
+  // 用户信息加载期间渲染骨架，避免整页空白闪动
   if (!currentUser) {
-    return null
+    return (
+      <div aria-busy="true" className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-10 w-80" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    )
   }
 
   return (

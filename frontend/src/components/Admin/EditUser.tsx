@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { PasswordInput } from "@/components/ui/password-input"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -161,10 +162,9 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>设置密码</FormLabel>
                     <FormControl>
-                      <Input
+                      <PasswordInput
                         autoComplete="new-password"
                         placeholder="不修改请留空"
-                        type="password"
                         {...field}
                       />
                     </FormControl>
@@ -180,11 +180,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>确认密码</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请再次输入密码"
-                        type="password"
-                        {...field}
-                      />
+                      <PasswordInput placeholder="请再次输入密码" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
