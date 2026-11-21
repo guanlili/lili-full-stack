@@ -235,8 +235,8 @@ lili-full-stack/
 | 项目 | 上游 fastapi/full-stack-fastapi-template | 本模板 |
 |------|------------------------------------------|--------|
 | 反向代理 | Traefik（复杂 label 配置） | nginx proxy_pass（内置前端镜像） |
-| CI/CD | staging + production 双套 | 单一 workflow：CI（lint+测试）通过后部署 |
-| Playwright e2e 测试 | 包含 | 已移除 |
+| CI/CD | staging + production 双套 | 单一 workflow：CI（lint+测试+e2e）通过后部署 |
+| Playwright e2e 测试 | 包含 | 包含（14 用例，CI 部署门槛） |
 | Copier 模板系统 | 包含 | 已移除 |
 | AI 开发规范 | 无 | AI_RULES.md + CLAUDE.md + .claude/commands/ |
 
@@ -249,16 +249,14 @@ lili-full-stack/
 | 不做什么 | 为什么 |
 |---------|--------|
 | 通用前端测试框架（vitest） | 当前使用 Node 内置测试运行器覆盖会话刷新关键逻辑；复杂组件与交互测试按具体项目引入 |
-| dependabot / renovate | 小团队没精力处理持续的升级 PR 噪音。用季度 `/upgrade-deps` 集中升级 + 验证代替 |
 | pre-commit 钩子 | CI 是唯一质量门槛。本地钩子对 AI 驱动的开发是摩擦（AI 每次提交都会被格式化钩子打断），且和 CI 重复 |
 | staging 环境 | 单服务器多项目、快速交付定位。staging 的维护成本大于收益；重要变更靠 CI 门槛 + 部署后健康检查兜底 |
-| Cookie 会话 | 当前使用 localStorage 保存 Token，Access Token 默认 15 分钟、Refresh Token 30 天并轮换；前端自动刷新。需要 Cookie 会话的项目另行设计 CSRF 与跨域策略 |
-| 登录接口限流 | 不在代码层加依赖。`rate_limit` **不是 Caddy 内置模块**——官方发行版不带，需要用 `xcaddy` 自行构建含 `caddy-ratelimit` 插件的二进制（或换用云防火墙/WAF 做限流）；模板不提供也不默认包含，正式上线且暴露公网时再评估 |
-| 生产环境隐藏 `/docs`、`/redoc` | API 文档公开对内网工具是便利。正式上线面向公网的项目建议关闭（`ENVIRONMENT=production` 时设 `docs_url=None`）或在 Caddy 层加 basic auth |
+| 传统服务端 Session | 认证用 JWT 双 token：access token 15 分钟走 Authorization header（拦截器防回放），refresh token 30 天轮换走 HttpOnly Cookie（Path 限定 `/login`、SameSite=Lax，logout 服务端吊销） |
 | Kubernetes / 多机编排 | 单服务器 docker compose 覆盖当前所有项目规模。规模到了再迁移，不预支复杂度 |
 
 ### 依赖维护说明
 
+- dependabot 周更分组（uv / npm / actions / docker，限 patch 与 minor）；major 升级单独成 PR 评估，合入前过全套 CI。
 - 本地前端使用 Node.js 24，与 Docker 和 CI 一致；`npm test` 使用 Node 内置测试运行器，通过 `tsx` 加载生成客户端的 TypeScript 模块。
 - Python 默认使用官方 PyPI，锁文件与索引配置保持一致；需要镜像时可在本机配置，避免将镜像访问限制带入模板。
 - `frontend/package.json` 的 `js-yaml` override 用于修复客户端生成器间接锁定旧版本的问题。上游解除旧版本锁定后可移除，移除前运行 `npm audit` 和客户端生成验证。

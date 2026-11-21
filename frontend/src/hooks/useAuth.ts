@@ -75,9 +75,12 @@ const useAuth = () => {
   }
 
   const logoutAll = async () => {
-    await LoginService.logoutAll({ throwOnError: true }).then(
-      (response) => response.data,
-    )
+    // 后端不可达时仍继续本地清理并登出（幂等），与 logout 同一兜底策略
+    try {
+      await LoginService.logoutAll({ throwOnError: true })
+    } catch {
+      // 忽略：吊销失败也要完成本地登出
+    }
     logout()
   }
 

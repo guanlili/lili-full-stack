@@ -23,6 +23,30 @@ def test_get_users_superuser_me(
     assert current_user["email"] == settings.FIRST_SUPERUSER
 
 
+def test_read_users_rejects_out_of_range_pagination(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    # 负 offset 会打挂 Postgres，超大 limit 可全表拖库——边界在 schema 层拒绝
+    r = client.get(
+        f"{settings.API_V1_STR}/users/",
+        headers=superuser_token_headers,
+        params={"skip": -1},
+    )
+    assert r.status_code == 422
+    r = client.get(
+        f"{settings.API_V1_STR}/users/",
+        headers=superuser_token_headers,
+        params={"limit": 10_000},
+    )
+    assert r.status_code == 422
+    r = client.get(
+        f"{settings.API_V1_STR}/users/",
+        headers=superuser_token_headers,
+        params={"skip": 0, "limit": 200},
+    )
+    assert r.status_code == 200
+
+
 def test_get_users_normal_user_me(
     client: TestClient, normal_user_token_headers: dict[str, str]
 ) -> None:

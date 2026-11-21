@@ -125,7 +125,9 @@ def login_access_token(
 
 
 @router.post("/login/refresh", response_model=Token)
+@limiter.limit(settings.RATE_LIMIT_REFRESH)
 def refresh_access_token(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
     *,
     response: Response,
     session: SessionDep,

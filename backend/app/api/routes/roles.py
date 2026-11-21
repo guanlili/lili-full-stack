@@ -84,9 +84,30 @@ def delete_role(
 
 @router.get("/", response_model=list[RoleDetailPublic])
 def read_roles(session: SessionDep) -> list[RoleDetailPublic]:
+    # 两条聚合查询一次取全量权限与计数，避免每个角色 2 条的 N+1
+    roles = session.exec(select(Role).order_by(Role.name)).all()
+    perms_by_role: dict[uuid.UUID, set[str]] = {}
+    for role_id, codename in session.exec(
+        select(RolePermission.role_id, Permission.codename).join(
+            Permission, col(Permission.id) == col(RolePermission.permission_id)
+        )
+    ).all():
+        perms_by_role.setdefault(role_id, set()).add(codename)
+    user_counts = dict(
+        session.exec(
+            select(UserRole.role_id, func.count()).group_by(col(UserRole.role_id))
+        ).all()
+    )
     return [
-        role_detail(session, role)
-        for role in session.exec(select(Role).order_by(Role.name))
+        RoleDetailPublic(
+            **role.model_dump(),
+            permissions=sorted(
+                perms_by_role.get(role.id, set()) & GRANTABLE_PERMISSIONS
+            ),
+            is_default=role.name == VISITOR_ROLE,
+            user_count=user_counts.get(role.id, 0),
+        )
+        for role in roles
     ]
 
 

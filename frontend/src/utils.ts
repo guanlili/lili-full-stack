@@ -27,7 +27,8 @@ function translateErrorMessage(message: string): string {
   return ERROR_MESSAGE_TRANSLATIONS[message] ?? message
 }
 
-function extractErrorMessage(err: unknown): string {
+// 提取并翻译后端错误信息；路由级 ErrorComponent 也用它展示友好文案
+export function extractErrorMessage(err: unknown): string {
   if (!(err instanceof AxiosError) || !err.response) {
     return "网络请求失败，请检查网络后重试。"
   }

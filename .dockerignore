@@ -5,6 +5,10 @@ frontend/node_modules
 **/.pytest_cache
 **/.mypy_cache
 **/.ruff_cache
+# 测试产物（覆盖率 HTML、e2e 报告）不进构建上下文
+**/htmlcov
+**/playwright-report
+**/test-results
 .git
 # 本地虚拟环境（数百 MB）与构建产物不进构建上下文
 **/.venv
