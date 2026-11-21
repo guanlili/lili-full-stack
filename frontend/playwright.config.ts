@@ -22,9 +22,11 @@ export default defineConfig({
   webServer: [
     {
       // 浏览器会把 localhost 解析为 ::1（IPv6），而 uvicorn 默认只绑 127.0.0.1，
-      // 因此 e2e 全链路统一用 127.0.0.1（不影响日常 dev 的 localhost 配置）
+      // 因此 e2e 全链路统一用 127.0.0.1（不影响日常 dev 的 localhost 配置）。
+      // RATE_LIMIT_ENABLED=false：全套件同 IP 登录远超 10/分钟会触发 429 打挂登录流
+      // （限流行为由后端 test_rate_limit.py 单测覆盖）
       command:
-        "bash -c 'cd ../backend && POSTGRES_SERVER=localhost uv run bash scripts/prestart.sh && POSTGRES_SERVER=localhost uv run uvicorn app.main:app --host 127.0.0.1 --port 8000'",
+        "bash -c 'cd ../backend && POSTGRES_SERVER=localhost RATE_LIMIT_ENABLED=false uv run bash scripts/prestart.sh && POSTGRES_SERVER=localhost RATE_LIMIT_ENABLED=false uv run uvicorn app.main:app --host 127.0.0.1 --port 8000'",
       url: "http://127.0.0.1:8000/api/v1/utils/ready-check/",
       reuseExistingServer: !process.env.CI,
       stdout: "ignore",

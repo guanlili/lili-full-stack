@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { PasswordInput } from "@/components/ui/password-input"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
@@ -30,6 +31,8 @@ import { handleError } from "@/utils"
 const formSchema = z.object({
   full_name: z.string().max(30, "姓名最多 30 个字符"),
   email: z.email({ message: "请输入有效的邮箱地址" }),
+  // 更改邮箱时必须复核当前密码，仅在邮箱变更时展示与提交
+  current_password: z.string().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -62,6 +65,8 @@ const UserInformation = () => {
     setEditMode(!editMode)
   }
 
+  const emailChanged = form.watch("email") !== (currentUser?.email ?? "")
+
   const mutation = useMutation({
     mutationFn: (data: UserUpdateMe) =>
       UsersService.updateUserMe({ body: data, throwOnError: true }).then(
@@ -90,7 +95,16 @@ const UserInformation = () => {
       updateData.full_name = data.full_name
     }
     if (data.email !== currentUser?.email) {
+      // 改绑邮箱需要复核当前密码（后端强校验），漏填直接在表单层拦下
+      if (!data.current_password) {
+        form.setError("current_password", {
+          type: "manual",
+          message: "更改邮箱需要输入当前密码确认",
+        })
+        return
+      }
       updateData.email = data.email
+      updateData.current_password = data.current_password
     }
 
     mutation.mutate(updateData)
@@ -169,6 +183,27 @@ const UserInformation = () => {
                 )
               }
             />
+
+            {editMode && emailChanged && (
+              <FormField
+                control={form.control}
+                name="current_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>当前密码</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete="current-password"
+                        placeholder="更改邮箱需输入当前密码确认"
+                        disabled={mutation.isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="flex gap-3">
               {editMode ? (

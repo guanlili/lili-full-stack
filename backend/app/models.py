@@ -57,6 +57,13 @@ class UserUpdate(SQLModel):
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
+    # 更改绑定邮箱必须复核当前密码（access token 被窃取不足以改登录凭据）
+    current_password: str | None = Field(default=None, max_length=128)
+
+
+class UserDeleteMe(SQLModel):
+    # 自助注销是不可逆操作，必须复核当前密码
+    current_password: str = Field(min_length=8, max_length=128)
 
 
 class UpdatePassword(SQLModel):

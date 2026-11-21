@@ -2,12 +2,12 @@ import uuid
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app import crud
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
-from app.models import RefreshToken, User, UserCreate
+from app.models import AuditLog, RefreshToken, User, UserCreate
 from tests.utils.user import create_random_user, user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
@@ -32,6 +32,114 @@ def test_get_users_normal_user_me(
     assert current_user["is_active"] is True
     assert current_user["is_superuser"] is False
     assert current_user["email"] == settings.EMAIL_TEST_USER
+
+
+def test_update_own_full_name_without_password(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    r = client.patch(
+        f"{settings.API_V1_STR}/users/me",
+        headers=normal_user_token_headers,
+        json={"full_name": "改名测试"},
+    )
+    assert r.status_code == 200
+    assert r.json()["full_name"] == "改名测试"
+
+
+def test_update_own_email_requires_current_password(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session
+) -> None:
+    new_email = random_email()
+    # 改绑邮箱是登录凭据变更：缺密码或密码错误都必须拒绝且不变更
+    for body in (
+        {"email": new_email},
+        {"email": new_email, "current_password": "wrong-password"},
+    ):
+        r = client.patch(
+            f"{settings.API_V1_STR}/users/me",
+            headers=normal_user_token_headers,
+            json=body,
+        )
+        assert r.status_code == 400
+    user = crud.get_user_by_email(session=db, email=settings.EMAIL_TEST_USER)
+    assert user
+    assert user.email == settings.EMAIL_TEST_USER
+
+
+def test_update_own_email_with_current_password_records_audit(
+    client: TestClient, db: Session
+) -> None:
+    email = random_email()
+    password = random_lower_string()
+    crud.create_user(session=db, user_create=UserCreate(email=email, password=password))
+    headers = user_authentication_headers(client=client, email=email, password=password)
+
+    new_email = random_email()
+    r = client.patch(
+        f"{settings.API_V1_STR}/users/me",
+        headers=headers,
+        json={"email": new_email, "current_password": password},
+    )
+    assert r.status_code == 200
+    assert r.json()["email"] == new_email
+
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "user.self_updated")
+            & (col(AuditLog.actor_user_id) == uuid.UUID(r.json()["id"]))
+        )
+    ).first()
+    assert audit is not None
+    assert audit.details and "email" in audit.details["fields"]
+
+
+def test_delete_own_user_requires_current_password(
+    client: TestClient, db: Session
+) -> None:
+    email = random_email()
+    password = random_lower_string()
+    user = crud.create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    headers = user_authentication_headers(client=client, email=email, password=password)
+
+    # 无 body（缺密码）422；错误密码 400；两种失败都不得写注销审计
+    # （TestClient 的 delete 不收 json 参数，带 body 的 DELETE 走 request）
+    r = client.delete(f"{settings.API_V1_STR}/users/me", headers=headers)
+    assert r.status_code == 422
+    r = client.request(
+        "DELETE",
+        f"{settings.API_V1_STR}/users/me",
+        headers=headers,
+        json={"current_password": "wrong-password"},
+    )
+    assert r.status_code == 400
+    assert (
+        db.exec(
+            select(AuditLog).where(
+                (col(AuditLog.action) == "user.self_deleted")
+                & (col(AuditLog.actor_user_id) == user.id)
+            )
+        ).first()
+        is None
+    )
+
+    r = client.request(
+        "DELETE",
+        f"{settings.API_V1_STR}/users/me",
+        headers=headers,
+        json={"current_password": password},
+    )
+    assert r.status_code == 200
+    assert crud.get_user_by_email(session=db, email=email) is None
+    # 账号删除后审计仍可查（AuditLog.actor_user_id 刻意非 FK）
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "user.self_deleted")
+            & (col(AuditLog.actor_user_id) == user.id)
+        )
+    ).first()
+    assert audit is not None
 
 
 def test_create_user_new_email(
@@ -198,26 +306,30 @@ def test_retrieve_users(
         assert "email" in item
 
 
-def test_update_user_me(
-    client: TestClient, normal_user_token_headers: dict[str, str], db: Session
-) -> None:
-    full_name = "Updated Name"
+def test_update_user_me(client: TestClient, db: Session) -> None:
+    # 独立用户：改绑邮箱需要 current_password，fixture 普通用户的密码不可知
     email = random_email()
-    data = {"full_name": full_name, "email": email}
+    password = random_lower_string()
+    crud.create_user(session=db, user_create=UserCreate(email=email, password=password))
+    headers = user_authentication_headers(client=client, email=email, password=password)
+
+    full_name = "Updated Name"
+    new_email = random_email()
+    data = {"full_name": full_name, "email": new_email, "current_password": password}
     r = client.patch(
         f"{settings.API_V1_STR}/users/me",
-        headers=normal_user_token_headers,
+        headers=headers,
         json=data,
     )
     assert r.status_code == 200
     updated_user = r.json()
-    assert updated_user["email"] == email
+    assert updated_user["email"] == new_email
     assert updated_user["full_name"] == full_name
 
-    user_query = select(User).where(User.email == email)
+    user_query = select(User).where(User.email == new_email)
     user_db = db.exec(user_query).first()
     assert user_db
-    assert user_db.email == email
+    assert user_db.email == new_email
     assert user_db.full_name == full_name
 
 
@@ -459,9 +571,11 @@ def test_delete_user_me(client: TestClient, db: Session) -> None:
     a_token = tokens["access_token"]
     headers = {"Authorization": f"Bearer {a_token}"}
 
-    r = client.delete(
+    r = client.request(
+        "DELETE",
         f"{settings.API_V1_STR}/users/me",
         headers=headers,
+        json={"current_password": password},
     )
     assert r.status_code == 200
     deleted_user = r.json()
@@ -473,9 +587,12 @@ def test_delete_user_me(client: TestClient, db: Session) -> None:
 def test_delete_user_me_as_superuser(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
-    r = client.delete(
+    # 密码复核通过后才走到超管自删的 403 拦截
+    r = client.request(
+        "DELETE",
         f"{settings.API_V1_STR}/users/me",
         headers=superuser_token_headers,
+        json={"current_password": settings.FIRST_SUPERUSER_PASSWORD},
     )
     assert r.status_code == 403
     response = r.json()

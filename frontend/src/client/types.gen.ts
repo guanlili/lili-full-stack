@@ -287,6 +287,16 @@ export type UserCreate = {
 };
 
 /**
+ * UserDeleteMe
+ */
+export type UserDeleteMe = {
+    /**
+     * Current Password
+     */
+    current_password: string;
+};
+
+/**
  * UserPublic
  */
 export type UserPublic = {
@@ -392,6 +402,10 @@ export type UserUpdateMe = {
      * Email
      */
     email?: string | null;
+    /**
+     * Current Password
+     */
+    current_password?: string | null;
 };
 
 /**
@@ -672,6 +686,15 @@ export type LoginLogoutData = {
     url: '/api/v1/login/logout';
 };
 
+export type LoginLogoutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginLogoutError = LoginLogoutErrors[keyof LoginLogoutErrors];
+
 export type LoginLogoutResponses = {
     /**
      * Successful Response
@@ -874,11 +897,20 @@ export type UsersCreateUserResponses = {
 export type UsersCreateUserResponse = UsersCreateUserResponses[keyof UsersCreateUserResponses];
 
 export type UsersDeleteUserMeData = {
-    body?: never;
+    body: UserDeleteMe;
     path?: never;
     query?: never;
     url: '/api/v1/users/me';
 };
+
+export type UsersDeleteUserMeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UsersDeleteUserMeError = UsersDeleteUserMeErrors[keyof UsersDeleteUserMeErrors];
 
 export type UsersDeleteUserMeResponses = {
     /**

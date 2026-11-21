@@ -20,6 +20,7 @@ from app.models import (
     UpdatePassword,
     User,
     UserCreate,
+    UserDeleteMe,
     UserPublic,
     UserRegister,
     UserRole,
@@ -103,17 +104,34 @@ def update_user_me(
     Update own user.
     """
 
+    email_changed = bool(user_in.email) and user_in.email != current_user.email
     if user_in.email:
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
             )
+    if email_changed:
+        # 改绑邮箱是登录凭据变更：仅凭短命 access token 不够，必须复核当前密码
+        verified, _ = verify_password(
+            user_in.current_password or "", current_user.hashed_password
+        )
+        if not verified:
+            raise HTTPException(status_code=400, detail="Incorrect password")
     user_data = user_in.model_dump(exclude_unset=True)
+    user_data.pop("current_password", None)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
+    record_audit(
+        session=session,
+        actor=current_user,
+        action="user.self_updated",
+        resource_type="user",
+        resource_id=current_user.id,
+        details={"fields": sorted(user_data)},
+    )
     return current_user
 
 
@@ -164,14 +182,30 @@ def read_user_me(current_user: CurrentUser) -> Any:
     response_model=Message,
     dependencies=[Depends(require_permission("profile.view"))],
 )
-def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
+def delete_user_me(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    body: UserDeleteMe,
+) -> Any:
     """
     Delete own user.
     """
+    verified, _ = verify_password(body.current_password, current_user.hashed_password)
+    if not verified:
+        raise HTTPException(status_code=400, detail="Incorrect password")
     if current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    # 审计先于删除落库（AuditLog.actor_user_id 非 FK，账号删除后历史仍可查）
+    record_audit(
+        session=session,
+        actor=current_user,
+        action="user.self_deleted",
+        resource_type="user",
+        resource_id=current_user.id,
+    )
     session.exec(delete(UserRole).where(col(UserRole.user_id) == current_user.id))
     delete_user_refresh_tokens(session=session, user_id=current_user.id)
     session.delete(current_user)

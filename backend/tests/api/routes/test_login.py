@@ -12,6 +12,7 @@ from sqlmodel import Session, col, select
 from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
+from app.core.sessions import hash_refresh_token
 from app.crud import create_user
 from app.models import AuditLog, RefreshToken, User, UserCreate
 from app.utils import generate_password_reset_token
@@ -96,7 +97,7 @@ def test_refresh_token_rotation(client: TestClient) -> None:
     set_cookie = login.headers["set-cookie"]
     assert "HttpOnly" in set_cookie
     assert "SameSite=lax" in set_cookie
-    assert f"Path={settings.API_V1_STR}/login/refresh" in set_cookie
+    assert f"Path={settings.API_V1_STR}/login" in set_cookie
     assert login.json().get("refresh_token") is None
     first_refresh_cookie = client.cookies.get("refresh_token")
     assert first_refresh_cookie
@@ -114,7 +115,7 @@ def test_refresh_token_rotation(client: TestClient) -> None:
         "refresh_token",
         first_refresh_cookie,
         domain="testserver",
-        path=f"{settings.API_V1_STR}/login/refresh",
+        path=f"{settings.API_V1_STR}/login",
     )
     reused = client.post(f"{settings.API_V1_STR}/login/refresh")
     assert reused.status_code == 401
@@ -141,6 +142,56 @@ def test_logout_clears_refresh_cookie(client: TestClient) -> None:
     assert r.status_code == 200
     assert client.cookies.get("refresh_token") is None
     assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
+
+
+def test_logout_revokes_server_side_refresh_token(
+    client: TestClient, db: Session
+) -> None:
+    login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={
+            "username": settings.FIRST_SUPERUSER,
+            "password": settings.FIRST_SUPERUSER_PASSWORD,
+        },
+    )
+    assert login.status_code == 200
+    refresh_cookie = client.cookies.get("refresh_token")
+    assert refresh_cookie
+
+    r = client.post(f"{settings.API_V1_STR}/login/logout")
+    assert r.status_code == 200
+
+    # 清掉 cookie 后手动放回旧值重放：服务端必须已吊销，而非仅靠浏览器删 cookie
+    client.cookies.clear()
+    client.cookies.set(
+        "refresh_token",
+        refresh_cookie,
+        domain="testserver",
+        path=f"{settings.API_V1_STR}/login",
+    )
+    assert client.post(f"{settings.API_V1_STR}/login/refresh").status_code == 401
+
+    token_row = db.exec(
+        select(RefreshToken).where(
+            col(RefreshToken.token_hash) == hash_refresh_token(refresh_cookie)
+        )
+    ).first()
+    assert token_row is not None
+    assert token_row.revoked_at is not None
+    # 手动放回的 cookie（domain 与服务端下发的不完全同键）会残留在共享 jar 里
+    # 干扰后续用例的 cookies.get()，结束前清理干净
+    client.cookies.clear()
+
+    superuser = db.exec(
+        select(User).where(col(User.email) == settings.FIRST_SUPERUSER)
+    ).one()
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "session.logout")
+            & (col(AuditLog.actor_user_id) == superuser.id)
+        )
+    ).first()
+    assert audit is not None
 
 
 def test_use_access_token(
