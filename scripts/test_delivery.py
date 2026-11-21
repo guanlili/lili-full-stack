@@ -1,6 +1,7 @@
 """Regression tests use temporary copies and a local HTTP server, never project secrets."""
 
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,51 @@ from threading import Thread
 from check_page_permissions import ROOT, check
 from init_project import initialize
 from smoke_test import SmokeClient, SmokeFailure, run
+
+
+class MainSmokeTests(unittest.TestCase):
+    """走真实 main() 入口——历史上 NameError 级崩溃只在 main() 路径出现，单测 initialize() 拦不住。"""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        for name in (
+            ".env.example",
+            "frontend/src/config.ts",
+            "frontend/index.html",
+            "PROJECT_CONTEXT.md",
+            "scripts/init_project.py",
+        ):
+            target = self.root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / name, target)
+
+    def test_main_initializes_env_and_exits_clean(self):
+        # cwd 指向临时目录（git remote 查不到 origin）；HOME 指向空目录强制走
+        # "未安装 devledger"分支（pm_script=None）——CI 无 devledger 曾在此 TypeError
+        empty_home = self.root / "home"
+        empty_home.mkdir()
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(self.root / "scripts/init_project.py"),
+                "客户项目",
+                "--port",
+                "8086",
+            ],
+            cwd=self.root,
+            env={**os.environ, "HOME": str(empty_home)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        env = self.root / ".env"
+        self.assertEqual(env.stat().st_mode & 0o777, 0o600)
+        self.assertIn("APP_PORT=8086", env.read_text())
+        self.assertIn("初始化完成", result.stdout)
+        self.assertIn("提示", result.stdout)
 
 
 class InitializationTests(unittest.TestCase):

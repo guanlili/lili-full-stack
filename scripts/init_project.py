@@ -4,8 +4,11 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import secrets
+import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,8 +66,6 @@ def initialize(
     }
     # Validate every source before writing. Exclusive creation prevents accidental
     # credential replacement, and restrictive mode applies from the first byte.
-    import os
-
     descriptor = os.open(root / ".env", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w") as output:
         output.write(env)
@@ -101,8 +102,6 @@ def main() -> None:
         "接下来填写 PROJECT_CONTEXT.md、替换 Logo/favicon，再运行 docker compose up --build。"
     )
     # devledger 项目管理自动激活（零输入）：本机装有 devledger skill 时执行，否则仅提示
-    import os
-    import shutil
     # 标准安装路径优先，~/devledger 兼容旧安装
     pm_script = next(
         (
@@ -119,7 +118,8 @@ def main() -> None:
         ["git", "remote", "get-url", "origin"], capture_output=True, text=True
     ).stdout.strip()
     m = re.search(r"[:/]([^/:]+/[^/.]+)(?:\.git)?$", origin) if origin else None
-    if os.path.isfile(pm_script) and m and shutil.which("gh"):
+    # pm_script 在未安装 devledger 的机器上是 None，必须先判空再 isfile
+    if pm_script and os.path.isfile(pm_script) and m and shutil.which("gh"):
         print("检测到 devledger，自动接入项目管理（建 Project + 激活占位符）...")
         code = subprocess.run(["bash", pm_script, m.group(1), "--local", ROOT]).returncode
         print("devledger 接入完成" if code == 0 else f"devledger 接入失败（exit {code}），可稍后手动运行：bash {pm_script} {m.group(1)} --local {ROOT}")
