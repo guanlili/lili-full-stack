@@ -2,6 +2,15 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.22 — 审计日志查看界面与前端打磨（#82/#83）
+
+- 新增超管专用审计查看：`GET /api/v1/audit-logs`（分页 + 动作模糊/操作者/资源类型过滤，时间倒序，附操作者邮箱——账号删除后显示"已删除用户"）；前端 `/admin/audit` 页面（防抖过滤、分页、加载/错误态），注册进 PAGES（`audit.view`，admin_only）后侧边栏自动可见。内部审计从"只写不读"补齐为可运营。
+- sonner 懒加载：Toaster 由 main.tsx lazy 挂载，41KB 运行时移出首屏 modulepreload；`lib/toast` 队列兜底保证挂载前的 toast 不丢（含单测），`useCustomToast`/queryClient 全部改走队列。
+- AddUser/EditUser 密码框统一换 `PasswordInput`（明文切换）；settings 加载骨架屏；roles 页 `key` hack 改 useEffect 同步。
+- 路由结构：`routes/_layout/admin/` 改目录式布局（index + audit 平级），修复点号命名下 `/admin/audit` 被嵌为 `/admin` 子路由而无处渲染的问题。
+
+数据库：无表结构变更。API：**新增** `GET /api/v1/audit-logs`（超管），需重新生成客户端。兼容性：无破坏性变更。
+
 ## 2026.11.22 — 运维与安全收尾
 
 - CSP 从 Report-Only 转强制：唯一放行的内联脚本是 index.html 主题防闪白脚本，以构建产物字节计算 sha256 写入 nginx；新增 `frontend/scripts/check-csp-hash.sh` 并接入 CI，改主题脚本未同步 hash 时构建拦截。
