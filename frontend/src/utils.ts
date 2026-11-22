@@ -1,33 +1,11 @@
 import { AxiosError } from "axios"
 
-const ERROR_MESSAGE_TRANSLATIONS: Record<string, string> = {
-  "Could not validate credentials": "登录凭证无效",
-  "Incorrect email or password": "邮箱或密码错误",
-  "Incorrect password": "密码错误",
-  "Inactive user": "账号未启用",
-  "User not found": "用户不存在",
-  "The user doesn't have enough privileges": "你没有执行此操作的权限",
-  "The user with this id does not exist in the system": "用户不存在",
-  "The user with this email already exists in the system.": "该邮箱已注册",
-  "User with this email already exists": "该邮箱已注册",
-  "Open user registration is forbidden on this server":
-    "当前服务器未开放用户注册",
-  "Super users are not allowed to delete themselves":
-    "超级管理员不能删除自己的账号",
-  "New password cannot be the same as the current one":
-    "新密码不能与当前密码相同",
-  "Password updated successfully": "密码修改成功",
-  "User updated successfully": "用户信息更新成功",
-  "User deleted successfully": "用户删除成功",
-  "Invalid token": "链接无效或已过期",
-  "Too many requests": "请求过于频繁，请稍后再试",
-}
-
 function translateErrorMessage(message: string): string {
   return ERROR_MESSAGE_TRANSLATIONS[message] ?? message
 }
 
-// 提取并翻译后端错误信息；路由级 ErrorComponent 也用它展示友好文案
+// 提取并翻译后端错误信息；只对 AxiosError 生效，非 HTTP 错误（JS 异常、
+// chunk 加载失败等）由调用方（如 ErrorComponent）自行分流展示
 export function extractErrorMessage(err: unknown): string {
   if (!(err instanceof AxiosError) || !err.response) {
     return "网络请求失败，请检查网络后重试。"
@@ -61,4 +39,27 @@ export const getInitials = (name: string): string => {
     .map((word) => word[0])
     .join("")
     .toUpperCase()
+}
+
+const ERROR_MESSAGE_TRANSLATIONS: Record<string, string> = {
+  "Could not validate credentials": "登录凭证无效",
+  "Incorrect email or password": "邮箱或密码错误",
+  "Incorrect password": "密码错误",
+  "Inactive user": "账号未启用",
+  "User not found": "用户不存在",
+  "The user doesn't have enough privileges": "你没有执行此操作的权限",
+  "The user with this id does not exist in the system": "用户不存在",
+  "The user with this email already exists in the system.": "该邮箱已注册",
+  "User with this email already exists": "该邮箱已注册",
+  "Open user registration is forbidden on this server":
+    "当前服务器未开放用户注册",
+  "Super users are not allowed to delete themselves":
+    "超级管理员不能删除自己的账号",
+  "New password cannot be the same as the current one":
+    "新密码不能与当前密码相同",
+  "Password updated successfully": "密码修改成功",
+  "User updated successfully": "用户信息更新成功",
+  "User deleted successfully": "用户删除成功",
+  "Invalid token": "链接无效或已过期",
+  "Too many requests": "请求过于频繁，请稍后再试",
 }

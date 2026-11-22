@@ -46,7 +46,8 @@ POSTGRES_SERVER=db
 POSTGRES_PORT=5432
 POSTGRES_DB=app
 POSTGRES_USER=postgres
-SENTRY_DSN=
+# Sentry：Secret 未设置时回退为空（前后端上报同时禁用）
+SENTRY_DSN="${SENTRY_DSN:-}"
 # 前端 Sentry 与后端共用同一 DSN（未配置则为空，前端禁用上报）
 VITE_SENTRY_DSN="${SENTRY_DSN:-}"
 # 审计日志保留天数（0 = 永久保留）；需要合规保留期时改这里

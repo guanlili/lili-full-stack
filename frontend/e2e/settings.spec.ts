@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test"
-import { registerAndLogin } from "./helpers"
+import { appEnv, registerAndLogin } from "./helpers"
 
 // 覆盖本次安全加固的三条密码复核路径：改邮箱、改密码、注销账号。
 // 设置页分三个标签（个人资料 / 登录安全 / 账号注销），toast 会堆叠，断言用 .first()
 test("个人资料：改名免密，改邮箱必须复核当前密码", async ({ page }) => {
   test.skip(
-    process.env.E2E_SIGNUP_DISABLED === "1",
+    appEnv.USERS_OPEN_REGISTRATION?.toLowerCase() === "false",
     "注册开关关闭时跳过（.env USERS_OPEN_REGISTRATION）",
   )
   const account = await registerAndLogin(page)
@@ -30,6 +30,11 @@ test("个人资料：改名免密，改邮箱必须复核当前密码", async ({
   await expect(page.getByText("密码错误").first()).toBeVisible()
 
   // 正确密码 → 改绑成功
+  // 等第一次的成功 toast 消失（sonner 4s 自动关闭）再保存，
+  // 保证后面的 toast 断言验证的是第二次保存本身
+  await expect(page.getByText("个人资料更新成功")).toBeHidden({
+    timeout: 10_000,
+  })
   await page.getByLabel("当前密码").fill(account.password)
   await page.getByRole("button", { name: "保存资料" }).click()
   await expect(page.getByText("个人资料更新成功").first()).toBeVisible()
@@ -38,7 +43,7 @@ test("个人资料：改名免密，改邮箱必须复核当前密码", async ({
 
 test("修改密码：错误旧密码被拒，成功后旧会话失效", async ({ page }) => {
   test.skip(
-    process.env.E2E_SIGNUP_DISABLED === "1",
+    appEnv.USERS_OPEN_REGISTRATION?.toLowerCase() === "false",
     "注册开关关闭时跳过（.env USERS_OPEN_REGISTRATION）",
   )
   const account = await registerAndLogin(page)
@@ -77,7 +82,7 @@ test("修改密码：错误旧密码被拒，成功后旧会话失效", async ({
 
 test("注销账号必须输入当前密码", async ({ page }) => {
   test.skip(
-    process.env.E2E_SIGNUP_DISABLED === "1",
+    appEnv.USERS_OPEN_REGISTRATION?.toLowerCase() === "false",
     "注册开关关闭时跳过（.env USERS_OPEN_REGISTRATION）",
   )
   const account = await registerAndLogin(page)

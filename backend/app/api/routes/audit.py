@@ -18,13 +18,28 @@ router = APIRouter(
 
 
 def _prune_expired_audit_logs(session: SessionDep) -> None:
-    """配置保留期后，超管查看审计时顺带清理过期行（读路径打扫，不占写路径）。"""
+    """配置保留期后，超管查看审计时顺带清理过期行（读路径打扫，不占写路径）。
+
+    分批删除：首次配置保留期时过期行可能很多，一次性大 DELETE 会造成长事务
+    与 WAL 尖峰；每批独立提交，删不完留给下次查看继续。
+    """
     retention = settings.AUDIT_LOG_RETENTION_DAYS
     if retention <= 0:
         return
     cutoff = datetime.now(UTC) - timedelta(days=retention)
-    session.exec(delete(AuditLog).where(col(AuditLog.created_at) < cutoff))
-    session.commit()
+    for _ in range(20):  # 单次查看最多清 20 批，避免请求超时
+        deleted = session.exec(
+            delete(AuditLog).where(
+                col(AuditLog.id).in_(
+                    select(AuditLog.id)
+                    .where(col(AuditLog.created_at) < cutoff)
+                    .limit(5_000)
+                )
+            )
+        ).rowcount
+        session.commit()
+        if not deleted:
+            break
 
 
 @router.get("/", response_model=AuditLogsPublic)
@@ -40,11 +55,14 @@ def read_audit_logs(
     _prune_expired_audit_logs(session)
     conditions = []
     if action:
-        conditions.append(col(AuditLog.action).icontains(action))
+        # autoescape：把用户输入里的 %/_ 当字面量而不是通配符
+        conditions.append(col(AuditLog.action).icontains(action, autoescape=True))
     if actor_user_id is not None:
         conditions.append(col(AuditLog.actor_user_id) == actor_user_id)
     if resource_type:
-        conditions.append(col(AuditLog.resource_type).icontains(resource_type))
+        conditions.append(
+            col(AuditLog.resource_type).icontains(resource_type, autoescape=True)
+        )
 
     count = session.exec(
         select(func.count()).select_from(AuditLog).where(*conditions)
@@ -53,7 +71,8 @@ def read_audit_logs(
         select(AuditLog, User.email)
         .outerjoin(User, col(User.id) == col(AuditLog.actor_user_id))
         .where(*conditions)
-        .order_by(col(AuditLog.created_at).desc())
+        # id 作 tiebreaker：created_at 相同时分页才稳定（不重复不丢行）
+        .order_by(col(AuditLog.created_at).desc(), col(AuditLog.id).desc())
         .offset(skip)
         .limit(limit)
     ).all()

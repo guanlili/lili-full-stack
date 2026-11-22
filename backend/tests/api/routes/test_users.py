@@ -70,6 +70,36 @@ def test_update_own_full_name_without_password(
     assert r.json()["full_name"] == "改名测试"
 
 
+def test_update_own_email_explicit_null_is_ignored(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    # 显式 {"email": null} 绕过改绑校验但会撞 NOT NULL（曾 500），应被丢弃
+    r = client.patch(
+        f"{settings.API_V1_STR}/users/me",
+        headers=normal_user_token_headers,
+        json={"email": None},
+    )
+    assert r.status_code == 200
+    assert r.json()["email"] == settings.EMAIL_TEST_USER
+
+
+def test_update_user_explicit_null_email_is_ignored(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    email = random_email()
+    password = random_lower_string()
+    user = crud.create_user(
+        session=db, user_create=UserCreate(email=email, password=password)
+    )
+    r = client.patch(
+        f"{settings.API_V1_STR}/users/{user.id}",
+        headers=superuser_token_headers,
+        json={"email": None},
+    )
+    assert r.status_code == 200
+    assert r.json()["email"] == email
+
+
 def test_update_own_email_requires_current_password(
     client: TestClient, normal_user_token_headers: dict[str, str], db: Session
 ) -> None:
@@ -484,6 +514,15 @@ def test_register_user(client: TestClient, db: Session) -> None:
     assert user_db.full_name == full_name
     verified, _ = verify_password(password, user_db.hashed_password)
     assert verified
+
+    # 自助注册与管理端建号同样留痕（账号来源可追溯）
+    audit = db.exec(
+        select(AuditLog).where(
+            (col(AuditLog.action) == "user.signup")
+            & (col(AuditLog.actor_user_id) == user_db.id)
+        )
+    ).first()
+    assert audit is not None
 
 
 def test_register_user_forbidden_when_registration_closed(client: TestClient) -> None:

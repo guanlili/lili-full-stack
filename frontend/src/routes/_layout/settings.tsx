@@ -4,6 +4,7 @@ import ChangePassword from "@/components/UserSettings/ChangePassword"
 import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -43,12 +44,28 @@ export const Route = createFileRoute("/_layout/settings")({
 })
 
 function UserSettings() {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, userQuery } = useAuth()
+
+  // 加载失败给错误态和重试，而不是永久骨架（query 失败后 data 恒为 undefined）
+  if (userQuery.isError) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-4 py-16 text-center"
+      >
+        <p className="text-muted-foreground">用户信息加载失败</p>
+        <Button variant="outline" onClick={() => userQuery.refetch()}>
+          重试
+        </Button>
+      </div>
+    )
+  }
 
   // 用户信息加载期间渲染骨架，避免整页空白闪动
   if (!currentUser) {
     return (
-      <div aria-busy="true" className="flex flex-col gap-6">
+      <div aria-busy="true" role="status" className="flex flex-col gap-6">
+        <span className="sr-only">正在加载账号设置…</span>
         <div className="space-y-2">
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-8 w-40" />

@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test"
-import { ADMIN_EMAIL, ADMIN_PASSWORD, randomAccount } from "./helpers"
+import { ADMIN_EMAIL, ADMIN_PASSWORD, appEnv, randomAccount } from "./helpers"
 
 test("注册 → 登录 → 无权限页跳 forbidden", async ({ page }) => {
   test.skip(
-    process.env.E2E_SIGNUP_DISABLED === "1",
+    appEnv.USERS_OPEN_REGISTRATION?.toLowerCase() === "false",
     "注册开关关闭时跳过（.env USERS_OPEN_REGISTRATION）",
   )
   const account = randomAccount()

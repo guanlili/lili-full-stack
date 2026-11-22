@@ -61,13 +61,14 @@ def test_audit_log_filters(
     assert all("login" in item["action"] for item in body["data"])
     assert all(item["actor_user_id"] == str(superuser.id) for item in body["data"])
 
-    # 资源类型过滤
+    # 资源类型过滤（先断言非空：all() 对空列表恒真，测不出"过滤失效"）
     r = client.get(
         f"{settings.API_V1_STR}/audit-logs/",
         headers=superuser_token_headers,
         params={"resource_type": "session"},
     )
     assert r.status_code == 200
+    assert r.json()["data"], "登录/登出必然产生 session 类审计，列表不应为空"
     assert all(item["resource_type"] == "session" for item in r.json()["data"])
 
 

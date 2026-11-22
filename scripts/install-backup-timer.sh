@@ -13,6 +13,9 @@
 
 set -euo pipefail
 
+# POSIX sh 单引号安全包裹：值里的 ' 转成 '\''
+single_quote() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUPS_DIR="${ROOT_DIR}/backups"
 HEALTHCHECKS_URL=""
@@ -48,16 +51,32 @@ fi
 [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename "$ROOT_DIR")"
 UNIT_NAME="backup-$(printf '%s' "$PROJECT_NAME" | tr -c 'a-zA-Z0-9-' '-')"
 
-# 构建期拼好单行命令（systemd ExecStart 不接受裸换行）；systemd 里 % 是特殊字符，转义为 %%
-BACKUP_CMD="python3 '$ROOT_DIR/scripts/backup_restore.py' backup '$BACKUPS_DIR' --project-dir '$ROOT_DIR'"
-if [ -n "$HEALTHCHECKS_URL" ]; then
-  PING_OK="curl -fsS --retry 3 --max-time 30 '$HEALTHCHECKS_URL'"
-  PING_FAIL="curl -fsS --retry 3 --max-time 30 '$HEALTHCHECKS_URL/fail' || true"
-  FULL_CMD="$BACKUP_CMD && $PING_OK || { $PING_FAIL; exit 1; }"
-else
-  FULL_CMD="$BACKUP_CMD"
-fi
-EXEC_START="/bin/sh -c '$(printf '%s' "$FULL_CMD" | sed 's/%/%%/g')'"
+# 生成 runner 脚本内容：ExecStart 只带一个加引号的路径参数（systemd 按自身
+# 规则分词），路径含空格也安全——不手工拼 /bin/sh -c 的双层引号（那会在空格/引号/
+# $ 上碎掉）。dry-run 只打印；真实安装时幂等覆盖写入 scripts/run-backup.sh。
+RUNNER="$ROOT_DIR/scripts/run-backup.sh"
+RUNNER_CONTENT="$(
+  printf '#!/bin/sh\n'
+  printf '# 由 install-backup-timer.sh 生成（幂等覆盖）：systemd timer 的执行体，勿手改\n'
+  printf 'set -eu\n'
+  printf 'if python3 %s backup %s --project-dir %s; then\n' \
+    "$(single_quote "$ROOT_DIR/scripts/backup_restore.py")" \
+    "$(single_quote "$BACKUPS_DIR")" \
+    "$(single_quote "$ROOT_DIR")"
+  if [ -n "$HEALTHCHECKS_URL" ]; then
+    printf '  curl -fsS --retry 3 --max-time 30 %s\n' "$(single_quote "$HEALTHCHECKS_URL")"
+    printf 'else\n'
+    printf '  curl -fsS --retry 3 --max-time 30 %s || true\n' "$(single_quote "$HEALTHCHECKS_URL/fail")"
+    printf '  exit 1\n'
+  else
+    printf 'else\n'
+    printf '  exit 1\n'
+  fi
+  printf 'fi\n'
+)"
+
+# systemd 里 % 是特殊字符，转义为 %%
+EXEC_START="'$(printf '%s' "$RUNNER" | sed "s/'/'\\\\''/g; s/%/%%/g")'"
 
 SERVICE_UNIT="[Unit]
 Description=Database and uploads backup for $PROJECT_NAME
@@ -86,7 +105,9 @@ mkdir -p "$BACKUPS_DIR"
 chmod 700 "$BACKUPS_DIR"
 
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "=== dry-run：将安装以下 unit（不写系统）==="
+  echo "=== dry-run：将安装以下内容（不写系统、不写仓库文件）==="
+  echo "--- ${RUNNER}（生成后 700 权限）---"
+  printf '%s\n' "$RUNNER_CONTENT"
   echo "--- /etc/systemd/system/$UNIT_NAME.service ---"
   printf '%s\n' "$SERVICE_UNIT"
   echo "--- /etc/systemd/system/$UNIT_NAME.timer ---"
@@ -106,6 +127,8 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+printf '%s\n' "$RUNNER_CONTENT" > "$RUNNER"
+chmod 700 "$RUNNER"
 printf '%s\n' "$SERVICE_UNIT" > "/etc/systemd/system/$UNIT_NAME.service"
 printf '%s\n' "$TIMER_UNIT" > "/etc/systemd/system/$UNIT_NAME.timer"
 systemctl daemon-reload

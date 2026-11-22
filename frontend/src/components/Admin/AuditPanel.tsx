@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -19,7 +19,9 @@ const PAGE_SIZE = 20
 function formatTime(value?: string | null) {
   if (!value) return "—"
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString("zh-CN", { hour12: false })
 }
 
 function formatDetails(details?: Record<string, unknown> | null) {
@@ -31,18 +33,30 @@ export default function AuditPanel() {
   const [page, setPage] = useState(0)
   const [actionInput, setActionInput] = useState("")
   const [action, setAction] = useState("")
+  const appliedActionRef = useRef("")
   const { query } = useAuditLogs(page, PAGE_SIZE, action)
   const total = query.data?.count ?? 0
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  // 动作过滤走服务端模糊匹配，输入防抖后再查询
+  // 动作过滤走服务端模糊匹配，输入防抖后再查询；过滤词（trim 后）没变时
+  // 不重置页码——否则多敲一个空格就会跳回第一页
   useEffect(() => {
     const timer = setTimeout(() => {
-      setAction(actionInput.trim())
-      setPage(0)
+      const next = actionInput.trim()
+      if (next !== appliedActionRef.current) {
+        appliedActionRef.current = next
+        setAction(next)
+        setPage(0)
+      }
     }, 400)
     return () => clearTimeout(timer)
   }, [actionInput])
+
+  // 越界收敛：保留期清理/过滤使总页数缩小时回到最后一页（与 UsersPanel 同款）
+  useEffect(() => {
+    if (query.data && !query.isPlaceholderData && page >= pageCount)
+      setPage(pageCount - 1)
+  }, [query.data, query.isPlaceholderData, page, pageCount])
 
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none">
@@ -58,6 +72,7 @@ export default function AuditPanel() {
             aria-label="按动作过滤"
             placeholder="按动作过滤，如 login"
             className="w-48"
+            maxLength={100}
             value={actionInput}
             onChange={(event) => setActionInput(event.target.value)}
           />
@@ -72,7 +87,7 @@ export default function AuditPanel() {
           </Button>
         </div>
       </div>
-      <Table>
+      <Table aria-busy={query.isFetching}>
         <TableHeader>
           <TableRow>
             <TableHead className="pl-5">时间</TableHead>
@@ -87,6 +102,7 @@ export default function AuditPanel() {
             <TableRow>
               <TableCell
                 colSpan={5}
+                role="status"
                 className="h-24 text-center text-muted-foreground"
               >
                 正在加载审计日志…
@@ -96,6 +112,7 @@ export default function AuditPanel() {
             <TableRow>
               <TableCell
                 colSpan={5}
+                role="alert"
                 className="h-24 text-center text-muted-foreground"
               >
                 审计日志加载失败{" "}
@@ -130,6 +147,7 @@ export default function AuditPanel() {
                 <TableCell>{item.resource_type}</TableCell>
                 <TableCell
                   className="max-w-64 truncate font-mono text-xs text-muted-foreground"
+                  tabIndex={0}
                   title={formatDetails(item.details)}
                 >
                   {formatDetails(item.details)}

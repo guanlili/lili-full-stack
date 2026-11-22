@@ -1,18 +1,25 @@
 import { type ErrorComponentProps, useRouter } from "@tanstack/react-router"
+import { AxiosError } from "axios"
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { reportError } from "@/lib/reportError"
 import { extractErrorMessage } from "@/utils"
 
 const ErrorComponent = ({ error, reset }: ErrorComponentProps) => {
   const router = useRouter()
-  // 翻译成友好文案；原始 error 同时上报 Sentry（SDK 未启用/加载失败时静默跳过）
-  const errorMessage = extractErrorMessage(error)
+  // API 错误翻译成友好文案；非 HTTP 错误（JS 异常/chunk 加载失败/beforeLoad 抛错）
+  // 展示原始 message——路由错误多数不是"网络问题"，不能一律报网络文案
+  const errorMessage =
+    error instanceof AxiosError
+      ? extractErrorMessage(error)
+      : error instanceof Error
+        ? error.message
+        : String(error ?? "未知错误")
 
   useEffect(() => {
     if (!error) return
-    import("@sentry/react")
-      .then((Sentry) => Sentry.captureException(error))
-      .catch(() => {})
+    // 统一上报入口（未配置 VITE_SENTRY_DSN 时零成本）
+    reportError(error)
   }, [error])
 
   return (
