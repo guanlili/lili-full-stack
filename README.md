@@ -41,11 +41,11 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 
 | 模块 | 内容 |
 |------|------|
-| 认证与会话 | JWT 登录、Access/Refresh Token 轮换、邮件找回密码（Mailcatcher 本地收信） |
+| 认证与会话 | JWT 登录、Access/Refresh Token 轮换（HttpOnly Cookie）、邮件找回密码（Mailcatcher 本地收信） |
 | 用户管理 | 用户 CRUD、可配置角色与页面权限、自助注册（默认关闭） |
-| 个人设置 | 修改资料与密码 |
-| 内部审计 | 关键操作留痕 |
-| 工程能力 | 前后端测试、CI（lint + 测试）、Docker 部署、备份恢复 |
+| 个人设置 | 修改资料与密码（改邮箱、注销需密码复核） |
+| 内部审计 | 关键操作留痕，超管在线查询（时间倒序、动作/操作者过滤、保留期可配） |
+| 工程能力 | 前后端测试、e2e、CI（lint + 测试 + e2e）、Docker 部署、备份恢复 |
 
 历史版本的配置、文件和任务数据表保留用于升级兼容，不再提供对应接口或默认界面，不自动删除已有数据。
 
@@ -236,7 +236,7 @@ lili-full-stack/
 |------|------------------------------------------|--------|
 | 反向代理 | Traefik（复杂 label 配置） | nginx proxy_pass（内置前端镜像） |
 | CI/CD | staging + production 双套 | 单一 workflow：CI（lint+测试+e2e）通过后部署 |
-| Playwright e2e 测试 | 包含 | 包含（14 用例，CI 部署门槛） |
+| Playwright e2e 测试 | 包含 | 包含（16 用例，CI 部署门槛） |
 | Copier 模板系统 | 包含 | 已移除 |
 | AI 开发规范 | 无 | AI_RULES.md + CLAUDE.md + .claude/commands/ |
 
