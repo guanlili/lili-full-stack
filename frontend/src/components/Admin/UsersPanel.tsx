@@ -1,8 +1,4 @@
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
+import { flexRender, useTable } from "@tanstack/react-table"
 import {
   ChevronLeft,
   ChevronRight,
@@ -44,7 +40,7 @@ import {
 import { useAdminUsers } from "@/hooks/useAdminUsers"
 import useAuth from "@/hooks/useAuth"
 import AddUser from "./AddUser"
-import { columns } from "./columns"
+import { columns, userTableFeatures } from "./columns"
 
 export default function UsersPanel() {
   const { user } = useAuth()
@@ -79,10 +75,10 @@ export default function UsersPanel() {
         })),
     [query.data, search, status, user?.id],
   )
-  const table = useReactTable({
+  const table = useTable({
+    features: userTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
   })
   const selectable = data
     .filter((account) => user?.is_superuser && !account.isCurrentUser)
@@ -281,7 +277,8 @@ export default function UsersPanel() {
                         }
                       />
                     </TableCell>
-                    {row.getVisibleCells().map((cell) => (
+                    {/* 不使用列隐藏功能，全部列恒可见——v9 直接用核心的 getAllCells */}
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,

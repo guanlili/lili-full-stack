@@ -19,6 +19,9 @@ def create_user(*, session: Session, user_create: UserCreate | SeedUserCreate) -
 
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
+    # 显式 {"email": null} 撞 NOT NULL（500）——与 update_user_me 同一防御
+    if user_data.get("email") is None:
+        user_data.pop("email", None)
     extra_data = {}
     if "password" in user_data:
         password = user_data["password"]

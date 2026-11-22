@@ -40,8 +40,10 @@ router = APIRouter(tags=["login"])
 logger = logging.getLogger(__name__)
 
 # refresh token 走 HttpOnly Cookie（前端 JS 不可读，XSS 无法窃取长命凭据）；
-# Path 限定到登录端点族（/login/*），业务接口不会携带。SameSite=Lax 阻止跨站
-# POST 携带，天然防 CSRF，无需额外 CSRF token。不能只限 /login/refresh——
+# Path 限定到登录端点族（/login/*），业务接口不会携带。SameSite=Lax 阻止绝大多数
+# 跨站 POST 携带（注意：Chrome 对新种 cookie 有约 2 分钟的 Lax+POST 例外窗口，
+# 此窗口内跨站顶级 POST 可触达 refresh/logout，影响限于强制轮换/登出 DoS；
+# 对 CSRF 有强合规要求的客户项目再加 Origin 校验）。不能只限 /login/refresh——
 # logout 也需要读到 cookie 才能吊销服务端 token。
 REFRESH_COOKIE = "refresh_token"
 REFRESH_COOKIE_PATH = f"{settings.API_V1_STR}/login"
@@ -89,7 +91,7 @@ def login_access_token(
             actor=None,
             action="login.failed",
             resource_type="session",
-            details={"email": form_data.username},
+            details={"email": form_data.username[:255]},
         )
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
@@ -98,7 +100,7 @@ def login_access_token(
             actor=user,
             action="login.failed",
             resource_type="session",
-            details={"email": form_data.username, "reason": "inactive_user"},
+            details={"email": form_data.username[:255], "reason": "inactive_user"},
         )
         raise HTTPException(status_code=400, detail="Inactive user")
     record_audit(
@@ -107,7 +109,7 @@ def login_access_token(
         action="login.success",
         resource_type="session",
         resource_id=user.id,
-        details={"email": form_data.username},
+        details={"email": form_data.username[:255]},
     )
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token = issue_refresh_token(session=session, user_id=user.id)

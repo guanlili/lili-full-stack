@@ -25,7 +25,7 @@ services:
         - path: ./backend/pyproject.toml
           action: rebuild
     environment:
-      SMTP_HOST: "mailcatcher"
+      SMTP_HOST: "mailpit"
       SMTP_PORT: "1025"
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
@@ -47,8 +47,9 @@ services:
         - path: ./frontend/package.json
           action: rebuild
 
-  mailcatcher:
-    image: schickling/mailcatcher
+  # Mailpit：本地邮件测试（SMTP 1025 收信，Web UI 8025 查看）；替代已停更的 mailcatcher
+  mailpit:
+    image: axllent/mailpit
     ports:
-      - "1080:1080"
+      - "8025:8025"
       - "1025:1025"

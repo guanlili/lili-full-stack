@@ -52,7 +52,11 @@ def read_users(
     count = session.exec(count_statement).one()
 
     statement = (
-        select(User).order_by(col(User.created_at).desc()).offset(skip).limit(limit)
+        select(User)
+        # id 作 tiebreaker：created_at 相同时分页稳定
+        .order_by(col(User.created_at).desc(), col(User.id).desc())
+        .offset(skip)
+        .limit(limit)
     )
     users = session.exec(statement).all()
 
@@ -125,6 +129,9 @@ def update_user_me(
             raise HTTPException(status_code=400, detail="Incorrect password")
     user_data = user_in.model_dump(exclude_unset=True)
     user_data.pop("current_password", None)
+    # 显式 {"email": null} 会绕过上面的改绑校验却仍触发 NOT NULL 违约（500），丢弃
+    if user_data.get("email") is None:
+        user_data.pop("email", None)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     session.commit()
@@ -203,7 +210,12 @@ def delete_user_me(
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
-    # 审计先于删除落库（AuditLog.actor_user_id 非 FK，账号删除后历史仍可查）
+    session.exec(delete(UserRole).where(col(UserRole.user_id) == current_user.id))
+    delete_user_refresh_tokens(session=session, user_id=current_user.id)
+    session.delete(current_user)
+    session.commit()
+    # 删除成功后才记审计（与 admin 删除路径一致）；AuditLog.actor_user_id 非 FK，
+    # current_user 虽已从会话移除，独立事务仍可凭内存中的对象落库
     record_audit(
         session=session,
         actor=current_user,
@@ -211,10 +223,6 @@ def delete_user_me(
         resource_type="user",
         resource_id=current_user.id,
     )
-    session.exec(delete(UserRole).where(col(UserRole.user_id) == current_user.id))
-    delete_user_refresh_tokens(session=session, user_id=current_user.id)
-    session.delete(current_user)
-    session.commit()
     return Message(message="User deleted successfully")
 
 
@@ -241,6 +249,15 @@ def register_user(
         )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
+    # 与管理端建号对齐：自助注册也留痕（开放注册时的账号来源可追溯）
+    record_audit(
+        session=session,
+        actor=user,
+        action="user.signup",
+        resource_type="user",
+        resource_id=user.id,
+        details={"email": user.email[:255]},
+    )
     return user
 
 

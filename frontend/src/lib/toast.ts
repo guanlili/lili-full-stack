@@ -19,9 +19,9 @@ function dispatch(fire: (mod: SonnerModule) => void) {
     fire(api)
     return
   }
+  // 排队等待 bindToast（Toaster 懒挂载即触发）冲排；不做预热——根级 lazy
+  // Toaster 首帧就会请求同一 chunk
   queue.push(() => fire(api as SonnerModule))
-  // 预热 chunk，缩短首次 toast 延迟；真正冲排仍以 bindToast（挂载）为准
-  void import("sonner")
 }
 
 export function toastSuccess(description: string) {

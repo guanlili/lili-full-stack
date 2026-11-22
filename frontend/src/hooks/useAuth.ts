@@ -21,7 +21,7 @@ const useAuth = () => {
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
 
-  const { data: user } = useQuery<UserPublic | null, Error>({
+  const userQuery = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: () =>
       UsersService.readUserMe({ throwOnError: true }).then(
@@ -29,6 +29,7 @@ const useAuth = () => {
       ),
     enabled: isLoggedIn(),
   })
+  const user = userQuery.data
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
@@ -90,6 +91,8 @@ const useAuth = () => {
     logout,
     logoutAll,
     user,
+    // 供页面区分"加载中"与"加载失败"：失败态可渲染重试而不是永久骨架
+    userQuery,
   }
 }
 

@@ -41,7 +41,7 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 
 | 模块 | 内容 |
 |------|------|
-| 认证与会话 | JWT 登录、Access/Refresh Token 轮换（HttpOnly Cookie）、邮件找回密码（Mailcatcher 本地收信） |
+| 认证与会话 | JWT 登录、Access/Refresh Token 轮换（HttpOnly Cookie）、邮件找回密码（Mailpit 本地收信） |
 | 用户管理 | 用户 CRUD、可配置角色与页面权限、自助注册（默认关闭） |
 | 个人设置 | 修改资料与密码（改邮箱、注销需密码复核） |
 | 内部审计 | 关键操作留痕，超管在线查询（时间倒序、动作/操作者过滤、保留期可配） |
@@ -111,7 +111,7 @@ docker compose up --build
 |------|----------|
 | 前端 | http://localhost:5173 |
 | 后端 API 文档 | http://localhost:8000/docs |
-| 邮件测试（Mailcatcher） | http://localhost:1080 |
+| 邮件测试（Mailpit） | http://localhost:8025 |
 
 默认管理员账号见 `.env` 中的 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`。
 

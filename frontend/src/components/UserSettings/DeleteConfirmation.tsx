@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 
@@ -21,7 +21,6 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 const DeleteConfirmation = () => {
-  const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const { handleSubmit } = useForm()
   const { logout } = useAuth()
@@ -39,9 +38,8 @@ const DeleteConfirmation = () => {
       void logout()
     },
     onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
-    },
+    // 不 invalidate currentUser：成功时账号已不存在（必然 401 触发硬跳转，
+    // 与 logout 赛跑会丢成功 toast），失败时用户也没变
   })
 
   const onSubmit = async () => {
@@ -49,7 +47,12 @@ const DeleteConfirmation = () => {
   }
 
   return (
-    <Dialog>
+    <Dialog
+      onOpenChange={(open) => {
+        // 关闭（取消/Esc/点遮罩）即清空密码：重新打开不残留上一次输入
+        if (!open) setPassword("")
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="destructive" className="mt-3">
           注销账号

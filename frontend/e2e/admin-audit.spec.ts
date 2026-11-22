@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { loginAsAdmin, registerAndLogin } from "./helpers"
+import { appEnv, loginAsAdmin, registerAndLogin } from "./helpers"
 
 test("管理员查看审计日志并按动作过滤", async ({ page }) => {
   await loginAsAdmin(page)
@@ -14,7 +14,7 @@ test("管理员查看审计日志并按动作过滤", async ({ page }) => {
 
 test("普通用户无法访问审计日志", async ({ page }) => {
   test.skip(
-    process.env.E2E_SIGNUP_DISABLED === "1",
+    appEnv.USERS_OPEN_REGISTRATION?.toLowerCase() === "false",
     "注册开关关闭时跳过（.env USERS_OPEN_REGISTRATION）",
   )
   await registerAndLogin(page)

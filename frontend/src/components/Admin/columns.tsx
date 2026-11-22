@@ -1,4 +1,9 @@
-import type { ColumnDef } from "@tanstack/react-table"
+import {
+  type ColumnDef,
+  coreRowModelsFeature,
+  createCoreRowModel,
+  tableFeatures,
+} from "@tanstack/react-table"
 
 import type { UserPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +14,14 @@ export type UserTableData = UserPublic & {
   isCurrentUser: boolean
 }
 
-export const columns: ColumnDef<UserTableData>[] = [
+// react-table v9：行模型等能力经 features 对象声明（迁移配方同上游模板）
+export const userTableFeatures = tableFeatures({
+  coreRowModelsFeature,
+  coreRowModel: createCoreRowModel(),
+})
+export type UserTableFeatures = typeof userTableFeatures
+
+export const columns: ColumnDef<UserTableFeatures, UserTableData>[] = [
   {
     accessorKey: "full_name",
     header: "姓名",
