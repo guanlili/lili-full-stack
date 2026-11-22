@@ -374,9 +374,12 @@ jobs:
             } > .deploy-target.new
             mv .deploy-target.new .deploy-target
 
-            echo "=== 清理旧镜像（项目级 dangling + 非本次 sha 的旧 tag，防止磁盘慢性占满）==="
-            # 项目级清理：不动同机其他项目的镜像/中间层
-            docker compose -f compose.yml image prune -f
+            echo "=== 清理旧镜像（dangling + 非本次 sha 的旧 tag，防止磁盘慢性占满）==="
+            # 服务器 compose 版本无 "compose image prune" 子命令（0a67358 实测
+            # unknown docker command 挂掉部署尾步）；dangling 清理只能全局做——
+            # 在维护锁内执行，同机其他项目若正在构建理论上可能被清掉中间层，
+            # 多项目共机时改为低峰定时执行
+            docker image prune -f
             docker images --format '{{.Repository}}:{{.Tag}}' \
               | grep -E '^lili-full-stack-(backend|frontend):' \
               | grep -v ":$DEPLOY_SHA$" \
