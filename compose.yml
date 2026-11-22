@@ -100,6 +100,8 @@ services:
       args:
         # 生产走 nginx 反代，前端用相对路径请求 /api
         - VITE_API_URL=
+        # 可选：与后端共用 SENTRY_DSN；未配置时前端不上报
+        - VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-}
         - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org}
     restart: always
     deploy:

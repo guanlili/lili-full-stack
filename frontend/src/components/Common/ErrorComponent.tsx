@@ -1,11 +1,19 @@
 import { type ErrorComponentProps, useRouter } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { extractErrorMessage } from "@/utils"
 
 const ErrorComponent = ({ error, reset }: ErrorComponentProps) => {
   const router = useRouter()
-  // 翻译成友好文案；原始 error 对象保留在闭包里供 Sentry 等上报使用
+  // 翻译成友好文案；原始 error 同时上报 Sentry（SDK 未启用/加载失败时静默跳过）
   const errorMessage = extractErrorMessage(error)
+
+  useEffect(() => {
+    if (!error) return
+    import("@sentry/react")
+      .then((Sentry) => Sentry.captureException(error))
+      .catch(() => {})
+  }, [error])
 
   return (
     <div
