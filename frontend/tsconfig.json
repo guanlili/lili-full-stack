@@ -12,12 +12,14 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    /* e2e 与 playwright.config 需要 node 全局（process/import.meta.dirname）；
+       TS7 起不再自动全量包含 @types，显式声明 */
+    "types": ["node"],
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
