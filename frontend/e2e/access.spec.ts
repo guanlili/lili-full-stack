@@ -15,9 +15,12 @@ test("注册 → 登录 → 无权限页跳 forbidden", async ({ page }) => {
   await page.getByTestId("confirm-password-input").fill(account.password)
   await page.getByRole("button", { name: "注册" }).click()
   await expect(page).toHaveURL(/\/login$/)
-
-  // 注册完成后登录（断言用工作台独有文案，不能用登录页自身的"欢迎回来"）
-  await page.getByTestId("email-input").fill(account.email)
+  // 注册完成后登录（断言用工作台独有文案，不能用登录页自身的"欢迎回来"）。
+  // 冷启动时跳转后表单可能重挂载吞掉 fill 的值，fill+校验整体重试到值落住
+  await expect(async () => {
+    await page.getByTestId("email-input").fill(account.email)
+    await expect(page.getByTestId("email-input")).toHaveValue(account.email)
+  }).toPass()
   await page.getByTestId("password-input").fill(account.password)
   await page.getByRole("button", { name: "登录" }).click()
   await expect(page.getByText("很高兴再次见到你")).toBeVisible()
