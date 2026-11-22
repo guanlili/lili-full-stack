@@ -206,9 +206,11 @@ class AuditLog(SQLModel, table=True):
     details: dict[str, Any] | None = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # 审计查看按时间倒序分页，created_at 必须有索引（否则表增长后全表排序）
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),
+        index=True,
     )
 
 
