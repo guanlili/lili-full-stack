@@ -119,13 +119,18 @@ python3 scripts/backup_restore.py backup /srv/backups/项目名 --project-dir /s
 
 每次产生独立快照目录，包含 `database.dump`、`uploads.tar` 和 `manifest.json`。失败时脚本会删除本次创建的快照目录，保留历史成功快照；未生成完整 manifest 或校验失败的目录不可恢复。应按保留期限定期清理过期快照，异常断电或进程被强制终止留下的半成品也需清理。文件不包含生产 `.env`，灾难恢复时仍需从 GitHub Secrets 配置新环境。
 
-定时任务示例（替换项目路径；按磁盘容量与数据保留要求设置异机存储生命周期）：
+定时备份与失败告警（systemd 服务器一键安装；timer 每日 03:00 错峰执行、关机错过补跑）：
 
-```cron
-0 3 * * * /usr/bin/python3 /srv/项目部署目录/scripts/backup_restore.py backup /srv/backups/项目名 --project-dir /srv/项目部署目录 >> /srv/backups/项目名/backup.log 2>&1
+```bash
+# 先 dry-run 预览将安装的 unit（不需要 root）
+bash scripts/install-backup-timer.sh --backups-dir /srv/backups/项目名 --healthchecks-url https://hc-ping.com/<uuid> --dry-run
+# 确认后安装
+sudo bash scripts/install-backup-timer.sh --backups-dir /srv/backups/项目名 --healthchecks-url https://hc-ping.com/<uuid>
+# 手动触发一次验证链路
+sudo systemctl start backup-<compose项目名>.service && journalctl -u backup-<compose项目名>.service -e
 ```
 
-安装定时任务前先创建备份目录并限制权限；配置备份失败告警。应定期在隔离环境恢复最新快照，不能只检查文件存在。
+告警为 healthchecks 类死人开关：备份成功 ping 基础 URL、失败 ping `/fail`；timer 本身静默失效时由对方"超时未 ping"告警兜底。无 systemd 的服务器退回手写 cron（命令见 `install-backup-timer.sh` 生成的 ExecStart）。按磁盘容量与数据保留要求设置异机存储生命周期；应定期在隔离环境恢复最新快照，不能只检查文件存在。
 
 ### 校验与恢复
 

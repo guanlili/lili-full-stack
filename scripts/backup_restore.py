@@ -150,16 +150,21 @@ class Deployment:
         if any(name in running for name in ("backend", "frontend", "prestart")):
             raise RuntimeError("Stop frontend, backend and prestart before restoring")
         self.run("up", "-d", "--wait", "db")
+        # --wait 只等 healthcheck 通过，psql 仍可能撞上启动窗口（CI 偶发 exit 2 竞态）：
+        # 计数放进容器内重试循环，30 秒内拿到结果，全部失败才报错
         result = self.run(
             "exec",
             "-T",
             "db",
             "sh",
             "-c",
-            'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc '
-            '"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace '
+            'sql="SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace '
             "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
-            "AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','v','m','S','f')\"",
+            "AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','v','m','S','f')\"; "
+            'for i in $(seq 1 30); do '
+            'count=$(exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "$sql" 2>/dev/null) '
+            "&& break; sleep 1; done; "
+            '[ -n "$count" ] || exit 1; echo "$count"',
             capture_output=True,
             text=True,
         )

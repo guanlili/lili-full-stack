@@ -142,6 +142,44 @@ class PermissionTests(unittest.TestCase):
         self.assertTrue(any("未注册" in item for item in check(self.root)))
 
 
+class BackupTimerInstallerTests(unittest.TestCase):
+    """dry-run 走真实安装脚本：生成的 unit 内容与校验逻辑有回归覆盖。"""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        target = self.root / "scripts/install-backup-timer.sh"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / "scripts/install-backup-timer.sh", target)
+
+    def test_dry_run_renders_units_and_rejects_bad_args(self):
+        run = lambda *args: subprocess.run(
+            ["bash", str(self.root / "scripts/install-backup-timer.sh"), *args],
+            cwd=self.root, text=True, capture_output=True, check=False,
+        )
+        ok = run(
+            "--backups-dir", str(self.root / "backups"),
+            "--healthchecks-url", "https://hc-ping.com/test-uuid",
+            "--schedule", "03:30",
+            "--dry-run",
+        )
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        # unit 名、排期、双向 ping 与启用命令都必须出现在渲染结果里
+        self.assertIn("backup-", ok.stdout)
+        self.assertIn("OnCalendar=*-*-* 03:30:00", ok.stdout)
+        self.assertIn("Persistent=true", ok.stdout)
+        self.assertIn("https://hc-ping.com/test-uuid/fail", ok.stdout)
+        self.assertIn("systemctl enable --now", ok.stdout)
+        self.assertEqual((self.root / "backups").stat().st_mode & 0o777, 0o700)
+
+        # 参数校验：非法时间与非法 URL 都必须拒绝且退出非零
+        self.assertNotEqual(run("--schedule", "25:00", "--dry-run").returncode, 0)
+        self.assertNotEqual(
+            run("--healthchecks-url", "ftp://x", "--dry-run").returncode, 0
+        )
+
+
 class SmokeTransportTests(unittest.TestCase):
     def test_required_credentials_fail_without_network_or_secret_output(self):
         result = subprocess.run(

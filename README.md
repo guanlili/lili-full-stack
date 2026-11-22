@@ -55,8 +55,11 @@ guanlili 的个人全栈项目模板。基于 [fastapi/full-stack-fastapi-templa
 **登录页（品牌区可按 --brand 定制）**
 ![登录页](docs/screenshots/login.png)
 
-**用户管理（角色权限、审计同款风格）**
+**用户管理（角色权限同款风格）**
 ![用户管理](docs/screenshots/user-management.png)
+
+**审计日志（超管查询，按动作过滤）**
+![审计日志](docs/screenshots/audit.png)
 
 </details>
 
@@ -146,7 +149,7 @@ cd frontend && npm test                             # 前端（Node 内置测试
 交付前三件套：
 
 1. `bash scripts/check-template.sh` — 模板文件、脚本语法、Compose 配置、示例残留与 **README 项目化**检查
-2. README 截图按当前界面更新（hero 图 + 主要界面，见 [docs/readme-template.md](docs/readme-template.md)）
+2. README 截图按当前界面更新：`cd frontend && CAPTURE_SCREENSHOTS=1 npx playwright test capture-screenshots`（详见 [docs/readme-template.md](docs/readme-template.md)）
 3. 导出验收表（装有 devledger 时）：`python3 ~/.agents/skills/devledger/scripts/export-timesheet.py --project <Project编号>`
 
 ---

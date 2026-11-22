@@ -25,6 +25,8 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 FROM base AS build-stage
 
 ARG VITE_API_URL
+# 可选：配置后前端构建期注入 Sentry DSN（与后端共用一个 DSN）
+ARG VITE_SENTRY_DSN
 
 RUN npm run build
 
