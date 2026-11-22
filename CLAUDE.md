@@ -101,12 +101,12 @@ npm run build
 
 ## 项目管理（devledger，记账硬性规范）
 
-本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#__PM_PROJECT__`（devledger skill，工具与方法论在本机 ~/.agents/skills/devledger）。
+本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#25`（devledger skill，工具与方法论在本机 ~/.agents/skills/devledger）。
 
 **硬性纪律：任何 AI 会话完成了一个可交付单元（需求/缺陷/修复/交付线/文档），结束会话前必须完成记账三步——没记账的工作等于没做。**
 
 1. 当轮 commits 聚类成可交付单元；commit 末尾尽量带 issue 号 `(#N)` 自动关联
-2. 按模板建 issue（来源[含原话]/描述[为什么·否决方案·做了什么]/交付物/验证/工时，决策上下文记录时写全），关闭之，`gh project item-add __PM_PROJECT__ --owner "@me" --url <issue url>`
+2. 按模板建 issue（来源[含原话]/描述[为什么·否决方案·做了什么]/交付物/验证/工时，决策上下文记录时写全），关闭之，`gh project item-add 25 --owner "@me" --url <issue url>`
 3. 设 6 字段：类型 / 来源（甲方/内部）/ 需求人/ 工时(h)（AI 评估，从宽，依据进 issue）/ 开始 / 结束；Status=已完成
 
 **issue 是唯一工作真相源**。已知坑与扩展工具（验收导出/对账）见 ~/.agents/skills/devledger/SKILL.md。
