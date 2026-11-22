@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, col, select
 
@@ -156,3 +157,34 @@ def test_audit_written_in_independent_transaction(db: Session) -> None:
             check.delete(row)
         check.commit()
         check.close()
+
+
+def test_audit_log_retention_prunes_expired_rows(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """配置保留期后，超管查看审计顺带清理过期行；窗口内的新鲜行保留。"""
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setattr(settings, "AUDIT_LOG_RETENTION_DAYS", 30)
+    db.add(
+        AuditLog(
+            action="test.retention_old",
+            resource_type="test",
+            created_at=datetime.now(UTC) - timedelta(days=31),
+        )
+    )
+    db.add(AuditLog(action="test.retention_fresh", resource_type="test"))
+    db.commit()
+
+    r = client.get(
+        f"{settings.API_V1_STR}/audit-logs/",
+        headers=superuser_token_headers,
+        params={"action": "test.retention"},
+    )
+    assert r.status_code == 200
+    actions = [item["action"] for item in r.json()["data"]]
+    assert "test.retention_old" not in actions
+    assert "test.retention_fresh" in actions

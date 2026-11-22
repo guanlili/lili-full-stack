@@ -123,6 +123,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_REFRESH: str = "30/minute"
     # 开放注册时的建号接口防账号垃圾塞
     RATE_LIMIT_SIGNUP: str = "5/minute"
+    # 审计日志保留天数；0 = 永久保留（模板默认）。配置后超管查看审计时顺带清理过期行
+    AUDIT_LOG_RETENTION_DAYS: int = 0
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 
