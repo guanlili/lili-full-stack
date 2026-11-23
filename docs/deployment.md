@@ -54,6 +54,8 @@ CI（后端 lint + 测试、前端 lint + 构建、客户端一致性、Playwrig
 → 清理旧镜像（dangling + 非本次 sha 的旧 tag）
 ```
 
+master 受分支保护：变更必须经 PR 合并，且上图中三个 CI job（后端、前端、e2e）是必需检查。PR 另外会跑「依赖安全审计」（`npm audit` 与 `pip-audit`），它不参与部署门禁——红了先升级依赖再合并。
+
 > 大陆服务器依赖下载要点：
 > - npm 走 `NPM_REGISTRY`（Secret，如 npmmirror），lockfile 的 integrity 校验不受 registry 影响；
 > - Python 依赖有特殊处理：`uv sync --frozen` 按 lock 里记录的 `files.pythonhosted.org` 直链下载、

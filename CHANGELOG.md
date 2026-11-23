@@ -2,6 +2,17 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.23 — 指令层同步、合并门禁与供应链可见性（#104）
+
+- **指令文档同步到代码**：`CLAUDE.md` 的邮件测试端口更正为 Mailpit 的 8025、项目结构补 `frontend/src/lib/`、后端测试补"宿主机运行需 `POSTGRES_SERVER=localhost`"；`CLAUDE.md`、`AGENTS.md`、`docs/module-development.md`、`/new-feature` 四处验证步骤补上 CSP 哈希校验与 e2e（含运行方式，以及"compose 的 backend/frontend 在运行时先停，否则复用的服务带登录限流会触发 429"）。`module-development.md` 新增「模板约定」五条：敏感操作写审计、公开或高频端点必须限流、前端通知走 `@/lib/toast`、改凭据与不可逆操作要密码复核、同前缀页面用目录式路由。
+- **master 分支保护**（仓库设置）：必须经 PR 合并（不要求批准）、三个 CI job 为必需检查、对管理员同样生效。直接 push 到 master 会被拒绝。
+- **依赖安全审计 job**：仅在 PR 上运行 `npm audit --package-lock-only --audit-level=high` 与 `pip-audit`。有意不进部署的依赖链、也不作为必需检查——审计服务故障或尚无修复版本的告警不应锁死部署；红了先升级依赖再合并。默认分支上新披露的 CVE 由 Dependabot alerts 通知。
+- **Dependabot alerts、security updates、Code scanning 默认配置**（仓库设置）：已启用。
+- **dependabot 分组**：docker、docker-compose、github-actions 三组限定 patch/minor（此前只有 uv、npm 限），postgres 等大版本升级改为单独 PR。
+- **CI 新增校验**：`deploy.yml` 里的 service 数据库镜像必须与 `compose.yml` 一致，否则 CI 测的不是生产要跑的版本。
+
+数据库/API：无变更。兼容性：**仓库设置不随模板复制**，客户仓库需按 `docs/template-upgrades.md` 手动开启；本仓库的变更从"可直接 push"变为"必须走 PR"。
+
 ## 2026.11.23 — 自审轮修复与上游同步：react-table 9 / Mailpit（#92–#94）
 
 - 对 11 轮自研代码做三路无上下文审查（后端/前端/基建子代理 + 移动端暗色 DOM 度量），修复 26 项测试覆盖不到的缺陷。要点：**SENTRY_DSN 从未接入部署通道**（deploy.yml env 块缺失 + 生成脚本无条件清空，"自动复用"实为死配置）；强制 CSP `connect-src` 缺 Sentry ingest 域；懒 Toaster chunk 失败会卸载整棵 React 树白屏（补 .catch 降级 + ErrorBoundary + `vite:preloadError` 整页重载）；`PATCH {"email": null}` 撞 NOT NULL 500（me/admin 两路径）；审计保留期首次大删除改分批（20×5000）；审计/用户排序补 id tiebreaker；icontains 补 autoescape；注销审计移到删除 commit 后；signup 补审计；login.failed email 截断；注销对话框密码不清空；settings 加载失败永久骨架改错误态+重试；e2e 死开关 `E2E_SIGNUP_DISABLED` 换真实 `USERS_OPEN_REGISTRATION`；check-csp-hash 升级全量双向比对；backup-timer ExecStart 改生成 runner 脚本（空格路径安全）。

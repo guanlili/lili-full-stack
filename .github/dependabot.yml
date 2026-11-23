@@ -14,6 +14,8 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+        # major 升级不进组：action 大版本偶有行为变化，单独 PR 评估
+        update-types: ["patch", "minor"]
 
   # Python（uv，根 workspace）
   - package-ecosystem: uv
@@ -63,6 +65,8 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+        # major 升级不进组（如 node 24→25 要连带改 engines）：单独 PR 评估
+        update-types: ["patch", "minor"]
 
   # compose 内的 image:（postgres 等，major 升级务必人工审）
   - package-ecosystem: docker-compose
@@ -77,3 +81,6 @@ updates:
     groups:
       docker-compose:
         patterns: ["*"]
+        # major 升级不进组：postgres 换大版本后旧数据目录不能直接启动（官方镜像不做
+        # pg_upgrade），必须人工规划备份、升级与回滚；合并前还要同步 deploy.yml 的 CI 镜像
+        update-types: ["patch", "minor"]
