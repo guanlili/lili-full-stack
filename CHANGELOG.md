@@ -2,6 +2,42 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.23 — 自审轮修复与上游同步：react-table 9 / Mailpit（#92–#94）
+
+- 对 11 轮自研代码做三路无上下文审查（后端/前端/基建子代理 + 移动端暗色 DOM 度量），修复 26 项测试覆盖不到的缺陷。要点：**SENTRY_DSN 从未接入部署通道**（deploy.yml env 块缺失 + 生成脚本无条件清空，"自动复用"实为死配置）；强制 CSP `connect-src` 缺 Sentry ingest 域；懒 Toaster chunk 失败会卸载整棵 React 树白屏（补 .catch 降级 + ErrorBoundary + `vite:preloadError` 整页重载）；`PATCH {"email": null}` 撞 NOT NULL 500（me/admin 两路径）；审计保留期首次大删除改分批（20×5000）；审计/用户排序补 id tiebreaker；icontains 补 autoescape；注销审计移到删除 commit 后；signup 补审计；login.failed email 截断；注销对话框密码不清空；settings 加载失败永久骨架改错误态+重试；e2e 死开关 `E2E_SIGNUP_DISABLED` 换真实 `USERS_OPEN_REGISTRATION`；check-csp-hash 升级全量双向比对；backup-timer ExecStart 改生成 runner 脚本（空格路径安全）。
+- **react-table 8→9**（上游 #2509 配方）：`tableFeatures({coreRowModelsFeature, coreRowModel: createCoreRowModel()})` + `useTable({features,...})`，`ColumnDef<Features, TData>` 泛形变化；`getVisibleCells` 挪进 column-visibility feature，不用列隐藏直接 `getAllCells()`。
+- **mailcatcher→mailpit**（前者已停更）：本地邮件查看端口 **1080→8025**（SMTP 1025 不变），compose.override 与 CI 同步。
+- 部署清理回退全局 `docker image prune`（服务器 compose 版本无项目级子命令，#93 部署尾步挂、#94 修复；本体部署与冒烟未受影响）。
+- 上游 169 commits 评审，其余不抄项已记录（Sonner 主题修复与我们方案收敛、竞态修法弱于本仓、DATABASE_URL 大重构等设计分歧）。
+
+数据库：无表结构变更。API：契约不变（email null 语义从 500 变为忽略）。兼容性：**前端依赖 major**（react-table 9 需按 template-upgrades 配方同步 columns/表格组件）；本地邮件端口变化。
+
+## 2026.11.22 — 运维韧性：备份告警闭环 / 前端 Sentry / devledger 激活（#90/#91）
+
+- `scripts/install-backup-timer.sh`：服务器一键安装 systemd timer（每日错峰 ≤30 分钟、`Persistent` 关机补跑），healthchecks 双向 ping（成功/失败 + timer 静默失效由对方超时告警兜底）；`--dry-run` 无 root 预览；deployment.md 以此替换手工 cron 示例。
+- 备份恢复测试竞态根治：restore 空库计数改容器内 30 秒重试（此前 CI 偶发 psql 撞启动窗口需 rerun）。
+- 前端 Sentry（可选）：`@sentry/react` 异步 init 不进首屏；`VITE_SENTRY_DSN` 经 compose build arg → Dockerfile ARG 注入，生产复用 `SENTRY_DSN`；ErrorComponent 懒上报。**启用需在 Secrets 配置 SENTRY_DSN**。
+- devledger 激活本仓库：Project #25 建项，CLAUDE.md/issue 模板占位符替换，AI 会话记账闭环。
+- 截图刷新工具：`CAPTURE_SCREENSHOTS=1 npx playwright test capture-screenshots`（CI 默认 skip），四张基线图刷新 + 新增审计页。
+
+数据库/API：无变更。兼容性：无破坏性；Secrets 增加 `SENTRY_DSN`（可选）。
+
+## 2026.11.22 — 前端依赖 major 批次与 e2e 竞态修复（#86）
+
+- @types/node 25→26、@hookform/resolvers 5→7（zod 4.6 兼容）。
+- **TypeScript 7 评估后回退 5.9**：`@hey-api/openapi-ts` 在 TS7 崩溃（`ts.SyntaxKind.AnyKeyword` 已移除）阻塞客户端生成链——本地 build 全绿、CI 漂移检查暴露。tsconfig 保留清理（移除已废弃 `baseUrl`、显式 `types:["node"]`）为 TS7 铺路。
+- react-table 9 当时暂缓（后于 11.23 批次完成）；fastapi pyproject floor 提升（#73，lock 早已在位）。
+- access.spec 冷启动竞态修复：注册跳转后表单重挂载吞掉 fill 值（单跑能过、全量必挂），fill+校验整体重试。
+
+兼容性：无 API 变更。
+
+## 2026.11.22 — 审计表时间索引与保留期（#85）
+
+- 迁移 `32f63b6790af`：`ix_audit_log_created_at`（审计查看按时间倒序分页的排序键，表增长后不再全表排序）。
+- `AUDIT_LOG_RETENTION_DAYS`（默认 0=永久）：配置后超管查看审计时读路径顺带清理过期行（分批删除，不占写路径、无需调度器）；env 键同步 `.env.example` 与 `generate-deploy-env.sh`。
+
+数据库：**新增迁移**（索引 only，upgrade/downgrade 对称）。API：不变。
+
 ## 2026.11.22 — 审计日志查看界面与前端打磨（#82/#83）
 
 - 新增超管专用审计查看：`GET /api/v1/audit-logs`（分页 + 动作模糊/操作者/资源类型过滤，时间倒序，附操作者邮箱——账号删除后显示"已删除用户"）；前端 `/admin/audit` 页面（防抖过滤、分页、加载/错误态），注册进 PAGES（`audit.view`，admin_only）后侧边栏自动可见。内部审计从"只写不读"补齐为可运营。
