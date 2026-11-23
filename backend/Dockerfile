@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 # 依赖下载源可覆盖（大陆服务器等网络受限环境设为镜像源，如
 # https://mirrors.cloud.tencent.com/pypi/simple）。
