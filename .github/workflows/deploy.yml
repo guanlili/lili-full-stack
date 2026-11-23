@@ -173,7 +173,7 @@ jobs:
         working-directory: frontend
         run: npm ci
       - name: 缓存 Chromium（版本随 package-lock 变化）
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
@@ -185,7 +185,7 @@ jobs:
         run: npx playwright test
       - name: 上传 e2e 失败报告与 trace
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
