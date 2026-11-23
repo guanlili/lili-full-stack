@@ -13,6 +13,20 @@
 5. 阅读每批更新的数据库/API兼容性说明；需要时生成迁移和客户端，并执行客户业务验收与模板回归。
 6. 通过 PR 评审和 CI 后发布，记录采用版本及未采用的改进。
 
+## 2026.11.22 – 2026.11.23 批次（索引保留期 / 依赖 major / 运维韧性 / 自审+上游同步）
+
+| 改进 | 主要文件 | 同步注意事项 |
+|------|----------|--------------|
+| 审计索引 + 保留期 | 迁移 `32f63b6790af`、`audit.py`、`config.py` | 跑迁移；`AUDIT_LOG_RETENTION_DAYS` 按合规要求配置（0=永久） |
+| **react-table 8→9（破坏性）** | `columns.tsx`、`UsersPanel.tsx`、package.json | `tableFeatures({coreRowModelsFeature, coreRowModel: createCoreRowModel()})` 导出供 columns 泛型引用；`useTable({features,...})` 替代 `useReactTable`；无列隐藏需求用 `row.getAllCells()` |
+| mailcatcher→mailpit | `compose.override.yml`、CI、README | 本地邮件 UI 端口 **1080→8025**（SMTP 1025 不变）；本地脚本/书签同步 |
+| 前端 Sentry（可选） | `main.tsx`、`ErrorComponent`、`lib/reportError.ts`、Dockerfile/compose | `VITE_SENTRY_DSN` 构建链路三点接线；Secrets 配 `SENTRY_DSN` 后生效；CSP `connect-src` 需含 `https://*.ingest.sentry.io` |
+| 备份告警闭环 | `scripts/install-backup-timer.sh`、`backup_restore.py` | 服务器执行安装脚本（dry-run 先预览）；restore 计数重试为静默增强 |
+| email-null 防御、审计分批/tiebreaker/autoescape、Toaster 白屏兜底等自审修复 | 后端 `users/crud/audit`、前端 `main/ErrorComponent/toast` | 按文件 cherry-pick 即可；`DELETE /users/me` 审计时序变化不影响契约 |
+| e2e 守卫 | `e2e/*.spec.ts` | skip 开关从 `E2E_SIGNUP_DISABLED` 改为读根 `.env` 的 `USERS_OPEN_REGISTRATION` |
+
+自审修复中记录不做的项：审计双连接池占用（高并发项目调大 `DB_POOL_SIZE`/`DB_MAX_OVERFLOW`）；email 大小写变体唯一性（存量行为，需要时单独做函数索引迁移）。
+
 ## 2026.11.22 批次（运维与安全收尾）
 
 | 改进 | 主要文件 | 同步注意事项 |
