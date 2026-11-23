@@ -22,6 +22,7 @@ frontend/src/
 ├── routes/         # TanStack Router 页面（_layout/ 下是需要登录的页面）
 ├── components/     # 可复用组件
 ├── hooks/          # 自定义 hooks（封装 useQuery/useMutation）
+├── lib/            # toast 队列与错误上报、会话刷新拦截器、queryClient、通用工具
 └── client/         # 自动生成的 API 客户端（不要手动修改）
 ```
 
@@ -37,7 +38,7 @@ docker compose down         # 停止
 |------|------|
 | 前端（vite dev server） | http://localhost:5173 |
 | API 文档 | http://localhost:8000/docs |
-| 邮件测试 | http://localhost:1080 |
+| 邮件测试（Mailpit） | http://localhost:8025 |
 
 查看数据库：`docker compose exec db psql -U postgres -d app`
 
@@ -47,6 +48,8 @@ docker compose down         # 停止
 cd backend
 uv run bash scripts/tests-start.sh
 ```
+
+在宿主机直接运行（不在 backend 容器里）时加 `POSTGRES_SERVER=localhost` 前缀，否则会去连 compose 网络里的主机名 `db`。
 
 测试库指向应用库时（`POSTGRES_DB_TEST` 与 `POSTGRES_DB` 相同），测试会在任何建表或删数据操作之前直接拒绝运行。
 
@@ -81,6 +84,16 @@ npm test
 npm run build
 ```
 
+构建之后校验 CSP 内联脚本哈希（改过 `frontend/index.html` 的主题脚本就要重算，否则 CI 拦下），再跑 e2e：
+
+```bash
+cd frontend
+bash scripts/check-csp-hash.sh
+npx playwright test
+```
+
+e2e 会自己拉起 uvicorn 和 vite，需要本机数据库在跑（`docker compose up -d db`；首次运行先 `npx playwright install chromium`）。如果 compose 的 backend、frontend 也在运行，e2e 会改为复用它们，而复用的服务带登录限流，全量用例会触发 429——先 `docker compose stop backend frontend`。
+
 需要自动修复格式时使用 `npm run lint:fix`；`npm run lint` 只检查，不修改工作区。
 
 交付前还要检查：
@@ -90,6 +103,8 @@ npm run build
 - 401/403 语义、角色权限和未登录行为有对应测试或手工验证。
 - 模板不预置业务 CRUD 示例；交付前确认没有临时调试代码和测试数据。
 - 交付前运行 `bash scripts/check-template.sh`，确认模板文件、脚本语法和 Compose 配置完整。
+- CSP 哈希校验与 e2e 全量通过（CI 会拦，本地先跑省一轮往返）。
+- PR 上「依赖安全审计」job 不是必需检查，但红了要先升级依赖再合并。
 
 ## 模块开发说明
 

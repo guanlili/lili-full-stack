@@ -22,11 +22,21 @@
 4. API 契约变化后运行 `cd frontend && npm run generate-client`，检查生成 diff，禁止手写 URL 或编辑生成文件。
 5. 在 `frontend/src/hooks/` 封装请求，页面和组件复用 hooks；分页与筛选进入 query key，mutation 后使相关缓存失效。退出或切换用户不能复用上一个用户的缓存。
 6. 实现页面与导航，提供加载、空状态、失败重试和操作结果反馈。后台任务完成/失败后停止轮询，导出结果提供可用的下载操作。前端可见性不能替代后端权限。
-7. 运行后端 lint/测试、前端 lint/会话测试/build、模板完整性检查；涉及部署或备份脚本时执行对应回归。更新 `PROJECT_CONTEXT.md` 的验收项。
+7. 运行后端 lint/测试、前端 lint/单测/build、CSP 哈希校验（`cd frontend && bash scripts/check-csp-hash.sh`）、e2e（`npx playwright test`，运行方式见 `CLAUDE.md`）和模板完整性检查；涉及部署或备份脚本时执行对应回归。更新 `PROJECT_CONTEXT.md` 的验收项。
 
 ## 交付记录
 
 每个模块的 PR 描述写明：解决的问题、角色与数据范围、数据库迁移及兼容性、API 客户端生成结果、验证命令和未验证项。禁止携带测试账号密码、真实客户数据或生产配置。提交与 PR 按当前用户授权执行。
+
+## 模板约定
+
+以下约定在模板现有代码里已经落地，新模块照现有写法做，不要另起一套：
+
+- **敏感操作写审计**：登录凭据、权限、账号和数据的删除/导出等操作，在业务 `commit()` 成功后调用 `record_audit`（`backend/app/core/audit.py`）。动作名用 `<资源>.<动作>`（如 `user.self_deleted`）；`details` 只放事后追溯需要的字段，不放密码和令牌，来自用户输入的字符串先截断。参考 `backend/app/api/routes/users.py`。
+- **公开或高频端点必须限流**：未登录即可访问、或每次请求都会查数据库的接口，挂 `@limiter.limit(settings.RATE_LIMIT_XXX)`，限额在 `config.py` 里定义成命名常量。测试套件全局关闭了限流，限流行为在 `test_rate_limit.py` 单独验证，新增限额时同步补用例。参考 `backend/app/api/routes/login.py`。
+- **前端通知走 `@/lib/toast`**：直接用它，或用封装它的 `useCustomToast`；不要 `import "sonner"`。Toaster 是懒加载的，直接引入会让 sonner 重新进入静态打包。
+- **改凭据、不可逆操作要密码复核**：修改邮箱、密码和注销账号这类操作必须校验 `current_password`，错误返回 400，仅凭 access token 不够。参考 `UserUpdateMe` 和 `UserDeleteMe`。
+- **同前缀的页面用目录式路由**：TanStack Router 的文件名里点号表示嵌套，`admin.audit.tsx` 是 `/admin` 的子路由，父页面没有 `<Outlet />` 就渲染不出来。写成 `routes/_layout/admin/index.tsx` 加 `admin/audit.tsx`。新增路由文件后先运行 `npx vite build` 重新生成路由树，否则 `tsc` 会报新路由的路径不在类型里。
 
 ## 新页面必须接入角色权限
 

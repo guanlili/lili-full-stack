@@ -13,6 +13,25 @@
 5. 阅读每批更新的数据库/API兼容性说明；需要时生成迁移和客户端，并执行客户业务验收与模板回归。
 6. 通过 PR 评审和 CI 后发布，记录采用版本及未采用的改进。
 
+## 2026.11.23 批次（指令层同步 / 合并门禁 / 供应链）
+
+**仓库设置不随模板复制，每个客户仓库都要手动开一次：**
+
+| 设置 | 位置 | 建议值 |
+|------|------|--------|
+| master 分支保护 | Settings → Branches → master | Require a pull request before merging（不要求批准）；Require status checks 勾选三个 CI job；Include administrators |
+| Dependabot alerts、Dependabot security updates | Settings → Code security | 开启 |
+| Code scanning（默认配置） | Settings → Code security | 语言选 Actions、JavaScript/TypeScript、Python |
+
+| 改进 | 主要文件 | 同步注意事项 |
+|------|----------|--------------|
+| 指令文档 | `CLAUDE.md`、`AGENTS.md`、`docs/module-development.md`、`.claude/commands/new-feature.md` | 客户项目改写过这些文件时，把「模板约定」一节和验证步骤逐条并进去，不要整文件覆盖 |
+| 依赖安全审计 job | `.github/workflows/deploy.yml` | 仅 PR 运行、不进 deploy 的 needs；有意不设为必需检查（原因见 CHANGELOG） |
+| dependabot 全组限 major | `.github/dependabot.yml` | postgres 等大版本升级改为单独 PR，合并前规划备份与 `pg_upgrade` |
+| CI 数据库镜像一致性校验 | `.github/workflows/deploy.yml` | 改 `compose.yml` 的数据库版本时，必须同步 `deploy.yml` 里两处 `image: postgres:*` |
+
+本批无数据库迁移；API 契约不变。
+
 ## 2026.11.22 – 2026.11.23 批次（索引保留期 / 依赖 major / 运维韧性 / 自审+上游同步）
 
 | 改进 | 主要文件 | 同步注意事项 |

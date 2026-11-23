@@ -57,6 +57,17 @@ jobs:
             echo "   新增/删除配置项时必须两边同步，否则该变量在生产上是空值（静默失效）。"
             exit 1
           fi
+      - name: 校验 CI 的数据库镜像与 compose.yml 一致
+        run: |
+          # CI 的 service 数据库版本在本文件里写了两处，和 compose.yml 是两份配置。
+          # 不一致时 CI 测的不是生产要跑的版本，数据库升级 PR 会"绿着通过"。
+          pg_image=$(awk '/^  db:/{f=1} f && /image:/{print $2; exit}' compose.yml)
+          mismatch=$(grep -nE '^[[:space:]]+image: postgres:' .github/workflows/deploy.yml | grep -v "image: ${pg_image//./\\.}$" || true)
+          if [ -z "$pg_image" ] || [ -n "$mismatch" ]; then
+            echo "❌ deploy.yml 里的 service 数据库镜像与 compose.yml 不一致（compose.yml 的 db 为 ${pg_image:-未找到}）："
+            echo "$mismatch"
+            exit 1
+          fi
       - name: 模板完整性检查
         run: bash scripts/check-template.sh
       - name: 初始化、权限与冒烟脚本回归
@@ -192,6 +203,33 @@ jobs:
             frontend/playwright-report
             frontend/test-results
           retention-days: 7
+
+  audit:
+    name: 依赖安全审计
+    # 只在 PR 上跑，用来在合并前拦下新引入的已知高危依赖。有意不进 deploy 的 needs，
+    # 也不列为分支保护的必需检查：审计服务故障、或"尚无修复版本"的告警不应锁死生产
+    # 部署（那需要人工去 Settings 解锁）。红了先升级依赖再合并，见 CLAUDE.md。
+    # 默认分支上新披露的 CVE 由仓库的 Dependabot alerts 负责通知。
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # 只读 package-lock.json 就能提交审计，不需要 npm ci
+      - name: 前端依赖审计（high 及以上判失败）
+        working-directory: frontend
+        run: npm audit --package-lock-only --audit-level=high
+      - uses: astral-sh/setup-uv@v7
+        with:
+          save-cache: false
+      - name: 安装依赖（含开发依赖，审计覆盖全部依赖）
+        run: uv sync
+      - name: 后端依赖审计（有已知漏洞判失败）
+        working-directory: backend
+        run: uv run --with pip-audit pip-audit --progress-spinner off
 
   deploy:
     name: 部署到服务器
