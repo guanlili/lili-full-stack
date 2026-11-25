@@ -66,10 +66,17 @@ description: 本脚手架（FastAPI + React + Vite + Tailwind v4 + shadcn/Radix�
 
 - **严禁在业务组件中硬编码 Hex / oklch / hsl 色值**；颜色只能来自语义变量或 `@theme` 令牌。确需新颜色时，先在 `index.css` 令牌层声明，再在组件中引用。
 - 优先复用 `src/components/ui/` 下的原子组件（Button、Card、Input、Table、Badge、Dialog、Select 等）；业务组件只做组合与业务变体，不重复造按钮、输入框、表格。
+- **优先组合 `src/components/patterns/` 业务模式组件**：页面骨架用 `PageContainer` / `PageHeader`，空态用 `EmptyState`，列表加载用 `TableSkeleton`，顶部指标用 `StatCardGrid` / `StatCard`。禁止手写裸标题（h1 + p 自由排版）、纯文本"暂无数据"空状态、裸加载文案或高度塌陷的占位。
 - 样式以 Tailwind 工具类为主；只有动态值、令牌层无法表达的值才允许 inline style，且必须是计算值而非裸色值。
 - 不绕过原子组件直接写裸 `<button>` / `<input>` 原生样式（Radix 无障碍语义与焦点态已封装在 ui 组件内）。
 
-### 4.2 禁止改动的逻辑边界
+### 4.2 全栈联动铁律（前后端契约）
+
+- **修改任何后端 FastAPI 路由 / Pydantic Schema 后，必须运行 `npm run generate-client` 同步更新前端 `src/client/` 的 TypeScript 类型与请求方法**；严禁前端手写 `fetch` / `axios` 或绕过生成客户端直连接口。
+- `src/client/` 为 OpenAPI 自动生成产物，禁止手工编辑；类型不一致时以后端 Schema 为准重新生成。
+- 视觉与页面改动不得牵连 Query 封装、表单校验与权限链路（见 4.2 逻辑边界）。
+
+### 4.3 禁止改动的逻辑边界
 
 重构页面时，**严禁修改**以下内容，视觉调整不得牵连：
 
@@ -94,5 +101,7 @@ description: 本脚手架（FastAPI + React + Vite + Tailwind v4 + shadcn/Radix�
 - [ ] 卡片、表格、表单的圆角、边框、阴影层级一致。
 - [ ] 亮色与暗色对比均达标，focus 圈在两种主题下可见。
 - [ ] 未改动 `src/client/`、TanStack Query 封装、zod 校验与路由定义。
+- [ ] 新页面已组合 `patterns/` 组件，无裸标题、纯文本空态与塌陷占位。
+- [ ] 若改动了后端路由/Schema，已运行 `npm run generate-client` 同步 `src/client/`。
 - [ ] 入场动效克制，且尊重 `prefers-reduced-motion`。
-- [ ] `npm run lint`、`npm test`、`npm run build` 通过。
+- [ ] 提交前本地 `npm run lint`、`npm run build` 通过。
