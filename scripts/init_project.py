@@ -15,22 +15,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # 模板自带、开新坑时可清理的示例业务资产。
-# 每条规则：文件相对路径 + 是否删除；models.py / api 聚合文件用正则段摘除。
+# 每条规则：文件相对路径 + 是否删除；models 包聚合文件用正则段摘除。
 SAMPLE_FILES = [
     "backend/app/api/routes/private.py",
     "backend/tests/api/routes/test_private.py",
     "backend/app/alembic/versions/0005_jobs.py",
 ]
 
-# models.py 中 Job / JobPublic 两个示例模型段（从 class Job 到下一个顶层 class 之前）
-JOB_MODEL_BLOCK = re.compile(
-    r"\nclass Job\(SQLModel, table=True\):.*?(?=\nclass \w+\(SQLModel|\nclass \w+\(BaseModel|\Z)",
-    re.DOTALL,
-)
-JOB_PUBLIC_BLOCK = re.compile(
-    r"\nclass JobPublic\(SQLModel\):.*?(?=\nclass \w+\(SQLModel|\nclass \w+\(BaseModel|\Z)",
-    re.DOTALL,
-)
+# models/job.py 整个文件即示例后台任务表模型（Job / JobPublic），开新坑时直接删除；
+# 同时从 models/__init__.py 的聚合导入与 __all__ 中摘除对应符号。
+JOB_MODEL_FILE = "backend/app/models/job.py"
+JOB_MODEL_SYMBOLS = ("Job", "JobPublic")
 
 
 def replace_once(source: str, pattern: str, value: str) -> str:
@@ -50,15 +45,39 @@ def strip_sample_business_code(root: Path) -> list[str]:
             path.unlink()
             removed.append(rel)
 
-    # 摘除 models.py 里的 Job / JobPublic 示例模型段
-    models_path = root / "backend/app/models.py"
-    if models_path.exists():
-        text = models_path.read_text()
-        text, _ = JOB_MODEL_BLOCK.subn("\n", text, count=1)
-        text, count = JOB_PUBLIC_BLOCK.subn("\n", text, count=1)
-        if count:
-            models_path.write_text(text)
-            removed.append("backend/app/models.py（Job / JobPublic 模型段）")
+    # 摘除示例模型文件 models/job.py，并从 models 包聚合导入/__all__ 中移除 Job 符号
+    job_model_path = root / JOB_MODEL_FILE
+    if job_model_path.exists():
+        job_model_path.unlink()
+        init_pkg = root / "backend/app/models/__init__.py"
+        if init_pkg.exists():
+            lines = init_pkg.read_text().splitlines()
+            cleaned: list[str] = []
+            skip_import_block = False
+            for line in lines:
+                # 跳过 `from app.models.job import (...)` 整块（含跨行括号）
+                if "from app.models.job import" in line:
+                    skip_import_block = True
+                    if ")" in line:
+                        skip_import_block = False
+                    continue
+                if skip_import_block:
+                    if ")" in line:
+                        skip_import_block = False
+                    continue
+                # 行内删除 Job / JobPublic 符号及其尾随逗号
+                stripped = line.strip()
+                if stripped.strip('",') in JOB_MODEL_SYMBOLS:
+                    continue
+                for sym in JOB_MODEL_SYMBOLS:
+                    line = re.sub(rf"\b{sym}\b,?\s*", "", line)
+                cleaned.append(line)
+            # 清理空串列表项与连续空行
+            text = "\n".join(cleaned)
+            text = re.sub(r'\n\s*"",', "", text)
+            text = re.sub(r"\n{3,}", "\n\n", text)
+            init_pkg.write_text(text.rstrip() + "\n")
+        removed.append(f"{JOB_MODEL_FILE}（Job / JobPublic 模型段）")
 
     # 摘除 api/main.py 里 private 路由的导入与条件挂载块；
     # 若摘除后 settings 不再被引用，一并去掉其导入。

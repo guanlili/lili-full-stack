@@ -74,6 +74,9 @@ dynamic_context = "test_function"
 [tool.coverage.report]
 show_missing = true
 sort = "-Cover"
+fail_under = 90
+# 启动种子脚本由 prestart 在部署时执行，不属于被测业务逻辑，不计入覆盖率门槛
+omit = ["app/initial_data.py"]
 
 [tool.coverage.html]
 show_contexts = true

@@ -34,6 +34,8 @@
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_TLS` / `SMTP_SSL` | 空 / `587` / `True` / `False` | SMTP 配置；`SMTP_HOST` 为空时邮件功能关闭 |
 | `SMTP_USER` / `SMTP_PASSWORD` | 空 | SMTP 认证 |
 | `EMAILS_FROM_EMAIL` | `info@example.com` | 发件人地址 |
+| `SENTRY_DSN` | 空 | 自建 GlitchTip 上报 DSN（与 Sentry 协议兼容，不用 Sentry 云）；留空关闭后端上报 |
+| `GLITCHTIP_ORIGIN` | 空 | GlitchTip 上报源 origin（scheme+host，不带路径），注入前端 nginx CSP `connect-src`；留空则 CSP 只放行 self |
 
 需要“忘记密码”自助找回时，必须配置完整 SMTP。未配置 SMTP 时，找回密码接口不会实际发送邮件。
 
@@ -68,7 +70,7 @@ master 受分支保护：变更必须经 PR 合并，且上图中三个 CI job�
 
 部署脚本会在重启容器前校验部署目标：已有 `.env` 的 `COMPOSE_PROJECT_NAME` 必须与本次配置一致；首次成功部署后会在部署目录写入被 Git 忽略的 `.deploy-target`，后续还会校验仓库和部署路径。这样可以在服务器上存在多个项目时，尽早阻止 `DEPLOY_PATH` 配错。
 
-模板默认提供认证与会话（Refresh Token 轮换和会话全部撤销）、可配置角色与页面权限、用户管理、个人设置、内部审计、请求 ID 和 Sentry 错误追踪。文件、系统配置、导入导出和后台任务不再作为默认功能。历史数据库表和附件 volume 保留用于升级与备份兼容，精简不会删除已有数据。密码、Token、私钥等敏感值必须放在环境变量或部署平台 Secrets 中。
+模板默认提供认证与会话（Refresh Token 轮换和会话全部撤销）、可配置角色与页面权限、用户管理、个人设置、内部审计、请求 ID 和 GlitchTip 错误追踪。文件、系统配置、导入导出和后台任务不再作为默认功能。历史数据库表和附件 volume 保留用于升级与备份兼容，精简不会删除已有数据。密码、Token、私钥等敏感值必须放在环境变量或部署平台 Secrets 中。
 
 部署配置由 `scripts/generate-deploy-env.sh` 生成，包含必填校验、特殊字符转义、临时文件原子替换和 600 权限保护。
 
@@ -162,6 +164,25 @@ python3 scripts/test_backup_restore.py --integration
 
 演练自动创建两个临时 Compose 项目，只使用 `app_test` 数据库；比较恢复后的记录与附件字节，验证拒绝覆盖非空库，并清理临时容器与卷。
 
+### 保留策略与异地副本
+
+- **本地快照保留**：建议保留最近 **7 天**每日快照（`/srv/backups/项目名/`），超期由清理任务删除；合规要求更长留存时按月另存归档快照。清理脚本只删完整 manifest 且校验通过的历史快照，半成品目录需人工确认后删除。
+- **异地副本**：本地快照必须同步到独立存储（推荐阿里云 OSS，企业认证账号；不新增腾讯云 COS）。在服务器定时把当日快照目录加密后 `ossutil cp` 到独立 bucket，按生命周期策略保留 **30 天**；OSS 与生产机不在同一可用区，单机房故障不丢备份。备份含客户数据，上传前加密、bucket 拒绝公网读写。
+- **恢复演练周期**：**每季度至少一次**在隔离环境用最新快照执行完整恢复（数据库 + 附件），核对记录条数、附件可下载、登录与关键业务可用；恢复演练记录留档。仅校验快照文件存在不等于可恢复。
+- **.env 与密钥**：备份不含生产 `.env` 与 `SECRET_KEY`，灾难恢复时从 GitHub Secrets 重新配置；密钥与备份分处保存。
+
+### 镜像与多环境
+
+模板默认在服务器现场 `compose up --build` 构建镜像（`BACKEND_IMAGE` / `FRONTEND_IMAGE` 仅作标签名，不推送外部 registry）。
+
+| 场景 | 建议 |
+|------|------|
+| 单机小项目、内网演示 | 保持现场构建，简单直接；无需 registry |
+| 多机部署、CI 产物复用到生产 | 推送到私有 registry（如 GHCR 或阿里云 ACR）：CI 构建并打 `sha` 标签推送，服务器只 `pull` 同版本镜像，避免现场构建受网络/缓存影响 |
+| 预发（staging） | 用独立 `COMPOSE_PROJECT_NAME`、独立数据库与域名，从非保护分支部署；预发与生产共用一套 Compose 编排，仅 `.env` 与镜像标签不同。生产只从 `master` 部署 |
+
+切换到 registry 模式时，在 Secrets 提供 registry 地址与登录凭据，CI 增加 `docker build/push` 步骤，服务器 compose 用 `image:` 拉取而不 `--build`。
+
 ## 回滚
 
 推荐通过新提交回滚：
@@ -201,3 +222,41 @@ python3 scripts/smoke_test.py http://localhost:80 --require-auth
 ```
 
 此检查验证 HTTP/API 行为，不替代浏览器交互、前端 JavaScript 执行与视觉验收。认证流程在 CI 中还会通过独立 `app_test` 的真实 API 测试，测试账号不进入生产。
+
+## 上线端到端验收 Checklist
+
+首次部署或重大版本上线后，逐项核对；全部通过再对外交付。
+
+**配置与安全**
+
+- [ ] `SECRET_KEY` 为每项目唯一随机值，未用默认/演示密钥
+- [ ] `POSTGRES_PASSWORD` 为强密码，未用 `changethis`
+- [ ] 生产 `ENVIRONMENT=production`；`USERS_OPEN_REGISTRATION` 按需要关闭
+- [ ] 面向真实用户的站点已 HTTPS，Caddy 层加了 HSTS；HTTP 明文不承载登录
+- [ ] 错误监控已接自建 GlitchTip（`SENTRY_DSN` / `VITE_SENTRY_DSN`），`GLITCHTIP_ORIGIN` 与实例对外地址一致，CSP `connect-src` 放行该域；未配置上报时 CSP 仅 `self`
+- [ ] 无 `.env`、本地密钥、`node_modules`、`__pycache__`、覆盖率 HTML 被提交进仓库
+
+**服务与数据**
+
+- [ ] `/api/v1/utils/ready-check/` 返回 Ready；`/docs` 按需要在生产关闭或加访问控制
+- [ ] 管理员账号可登录、可进入 dashboard；访客账号权限与设计一致
+- [ ] 关键业务记录可读写，附件可上传/下载；刷新会话、登出、全部登出均正常
+- [ ] 审计日志有记录（登录成功/失败、会话撤销、密码重置等）
+- [ ] 备份任务已安装并成功跑过一次；快照可 `verify` 校验通过
+- [ ] 异地副本已同步到 OSS（或独立存储），保留策略生效
+
+**发布与回滚**
+
+- [ ] CI 全绿（后端 lint/测试/覆盖率、前端 lint/测试/构建/客户端一致性、e2e、依赖审计、CodeQL）
+- [ ] 本次部署 commit 与 CI 验证过的版本一致；旧镜像/临时容器已清理
+- [ ] 已明确回滚方式（`git revert`）与最近一次可用备份位置
+
+## 本地从零启动 Checklist（新坑）
+
+`init_project.py` 生成骨架后，本地首次拉起前确认：
+
+- [ ] `.env` 由 `.env.example` 复制，必填项（`SECRET_KEY`、`FIRST_SUPERUSER_PASSWORD`、`POSTGRES_PASSWORD`）已填
+- [ ] `docker compose up --build` 后 prestart 迁移成功、backend healthy、frontend 可访问
+- [ ] 用管理员账号登录；API 文档与冒烟检查通过
+- [ ] 若摘除了示例 Job/private 路由，`alembic check` 无未生成迁移、`npm run generate-client` 后 `src/client/` 无 diff
+

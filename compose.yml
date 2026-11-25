@@ -100,8 +100,10 @@ services:
       args:
         # 生产走 nginx 反代，前端用相对路径请求 /api
         - VITE_API_URL=
-        # 可选：与后端共用 SENTRY_DSN；未配置时前端不上报
+        # 可选：与后端共用 Sentry DSN；未配置时前端不上报
         - VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-}
+        # 自建 GlitchTip 上报源，注入 nginx CSP connect-src；未配置则仅放行 self
+        - GLITCHTIP_ORIGIN=${GLITCHTIP_ORIGIN:-}
         - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org}
     restart: always
     deploy:
