@@ -75,8 +75,13 @@ dynamic_context = "test_function"
 show_missing = true
 sort = "-Cover"
 fail_under = 90
-# 启动种子脚本由 prestart 在部署时执行，不属于被测业务逻辑，不计入覆盖率门槛
-omit = ["app/initial_data.py"]
+# 启动/种子脚本由 prestart 在部署时执行，不属于被测业务逻辑；其 __main__ 守卫行
+# 无法在 pytest 进程内触发，不计入覆盖率门槛（脚本内探活/校验逻辑已由 tests/scripts 覆盖）
+omit = [
+    "app/initial_data.py",
+    "app/backend_pre_start.py",
+    "app/tests_pre_start.py",
+]
 
 [tool.coverage.html]
 show_contexts = true
