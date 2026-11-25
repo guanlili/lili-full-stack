@@ -6,6 +6,10 @@ import ReactDOM from "react-dom/client"
 import { ThemeProvider } from "./components/theme-provider"
 import { queryClient } from "./lib/queryClient"
 import { configureSession } from "./lib/session"
+// 离线自托管字体（fontsource variable，内网/私有化部署不依赖外部 CDN）
+import "@fontsource-variable/inter"
+import "@fontsource-variable/plus-jakarta-sans"
+import "@fontsource-variable/jetbrains-mono"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
 
