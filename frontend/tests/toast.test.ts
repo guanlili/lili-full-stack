@@ -1,7 +1,13 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { bindToast, toastError, toastSuccess } from "../src/lib/toast"
+import {
+  _resetErrorThrottle,
+  bindToast,
+  toastError,
+  toastErrorMessage,
+  toastSuccess,
+} from "../src/lib/toast"
 
 type Call = [string, string, string | undefined]
 
@@ -44,4 +50,30 @@ test("toast 队列兜底：挂载前排队不丢，bind 后即时派发且幂等
   toastError("仍走第一个")
   assert.deepEqual(second.calls, [])
   assert.deepEqual(first.calls.at(-1), ["error", "操作失败", "仍走第一个"])
+})
+
+test("错误文案 3 秒内重复弹出被节流，不同文案互不影响", () => {
+  _resetErrorThrottle()
+  const realNow = Date.now
+  let clock = 1_000_000
+  Date.now = () => clock
+  try {
+    const t = fakeSonner()
+    bindToast(t.module)
+
+    toastErrorMessage("服务器开了小差，请稍后重试")
+    toastErrorMessage("服务器开了小差，请稍后重试")
+    assert.equal(t.calls.length, 1)
+
+    // 不同错误文案照常弹出
+    toastErrorMessage("没有权限执行此操作")
+    assert.equal(t.calls.length, 2)
+
+    // 超过节流窗口后相同文案再次允许弹出
+    clock += 3001
+    toastErrorMessage("服务器开了小差，请稍后重试")
+    assert.equal(t.calls.length, 3)
+  } finally {
+    Date.now = realNow
+  }
 })

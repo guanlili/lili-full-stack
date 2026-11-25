@@ -39,7 +39,7 @@
 | 审计索引 + 保留期 | 迁移 `32f63b6790af`、`audit.py`、`config.py` | 跑迁移；`AUDIT_LOG_RETENTION_DAYS` 按合规要求配置（0=永久） |
 | **react-table 8→9（破坏性）** | `columns.tsx`、`UsersPanel.tsx`、package.json | `tableFeatures({coreRowModelsFeature, coreRowModel: createCoreRowModel()})` 导出供 columns 泛型引用；`useTable({features,...})` 替代 `useReactTable`；无列隐藏需求用 `row.getAllCells()` |
 | mailcatcher→mailpit | `compose.override.yml`、CI、README | 本地邮件 UI 端口 **1080→8025**（SMTP 1025 不变）；本地脚本/书签同步 |
-| 前端 Sentry（可选） | `main.tsx`、`ErrorComponent`、`lib/reportError.ts`、Dockerfile/compose | `VITE_SENTRY_DSN` 构建链路三点接线；Secrets 配 `SENTRY_DSN` 后生效；CSP `connect-src` 需含 `https://*.ingest.sentry.io` |
+| 前端错误监控（可选，自建 GlitchTip） | `main.tsx`、`ErrorComponent`、`lib/reportError.ts`、Dockerfile/compose | `VITE_SENTRY_DSN` 构建链路三点接线；Secrets 配 `SENTRY_DSN` 后生效；CSP `connect-src` 放行 `GLITCHTIP_ORIGIN`（envsubst 注入），不用 Sentry 云 |
 | 备份告警闭环 | `scripts/install-backup-timer.sh`、`backup_restore.py` | 服务器执行安装脚本（dry-run 先预览）；restore 计数重试为静默增强 |
 | email-null 防御、审计分批/tiebreaker/autoescape、Toaster 白屏兜底等自审修复 | 后端 `users/crud/audit`、前端 `main/ErrorComponent/toast` | 按文件 cherry-pick 即可；`DELETE /users/me` 审计时序变化不影响契约 |
 | e2e 守卫 | `e2e/*.spec.ts` | skip 开关从 `E2E_SIGNUP_DISABLED` 改为读根 `.env` 的 `USERS_OPEN_REGISTRATION` |
@@ -74,7 +74,7 @@
 | JWT 类型与重置链接一次性 | `backend/app/core/security.py`、`api/deps.py`、`utils.py`、`api/routes/login.py`、`models.py` | 三处签发/校验需一起同步；项目自建的其他 JWT 也应带上独立的 `typ` |
 | 请求日志与 Request ID | `backend/app/main.py` | 依赖日志中原始路径的排查脚本改为匹配路由模板 |
 | 管理员自我保护、Token 清理 | `backend/app/api/routes/users.py`、`core/sessions.py` | 项目若有其他删除用户的入口，同样调用 `delete_user_refresh_tokens` |
-| 连接池、Sentry 采样 | `backend/app/core/db.py`、`main.py` | 需要全量追踪的项目调整 `SENTRY_TRACES_SAMPLE_RATE` |
+| 连接池、GlitchTip 采样 | `backend/app/core/db.py`、`main.py` | 需要全量追踪的项目调整 `SENTRY_TRACES_SAMPLE_RATE` |
 
 本批无数据库迁移和 API 契约变更。升级后旧 Access Token 由前端自动刷新替换，旧重置密码链接需要重新申请。
 

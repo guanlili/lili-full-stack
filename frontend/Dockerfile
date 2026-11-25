@@ -27,6 +27,9 @@ FROM base AS build-stage
 ARG VITE_API_URL
 # 可选：配置后前端构建期注入 Sentry DSN（与后端共用一个 DSN）
 ARG VITE_SENTRY_DSN
+# 自建 GlitchTip 上报源（origin，含 scheme 与域名，不带路径）。用于 nginx CSP
+# connect-src 放行；未配置时 CSP 仅放行 self。不要填 Sentry 云。
+ARG GLITCHTIP_ORIGIN=
 
 RUN npm run build
 
@@ -35,4 +38,9 @@ FROM nginx:1
 
 COPY --from=build-stage /app/frontend/dist/ /usr/share/nginx/html
 
-COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# 渲染 nginx.conf 中的 $GLITCHTIP_ORIGIN 占位；仅替换这一个变量，避免误改其他 $ 引用。
+# envsubst 在最终镜像的构建层执行，产物 conf 已是定值（运行期不再做模板替换）。
+COPY ./frontend/nginx.conf /tmp/nginx.conf.template
+ARG GLITCHTIP_ORIGIN=
+RUN envsubst '${GLITCHTIP_ORIGIN}' < /tmp/nginx.conf.template > /etc/nginx/conf.d/default.conf \
+  && rm /tmp/nginx.conf.template

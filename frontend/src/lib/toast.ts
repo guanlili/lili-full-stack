@@ -5,6 +5,11 @@ type SonnerModule = typeof import("sonner")
 let api: SonnerModule | null = null
 const queue: Array<() => void> = []
 
+// 相同错误文案在该窗口内只弹一次，避免刷新/重试/多请求并发时 toast 刷屏。
+const ERROR_THROTTLE_MS = 3000
+const lastErrorAt = new Map<string, number>()
+const now = () => Date.now()
+
 /** Toaster 挂载（sonner chunk 就绪）后回填 API 并冲排队列；幂等。 */
 export function bindToast(loaded: SonnerModule) {
   if (api) return
@@ -24,6 +29,24 @@ function dispatch(fire: (mod: SonnerModule) => void) {
   queue.push(() => fire(api as SonnerModule))
 }
 
+/** 错误类提示去重：窗口内同文案直接吞掉，返回是否允许弹出。 */
+function shouldShowError(message: string): boolean {
+  const current = now()
+  const last = lastErrorAt.get(message)
+  if (last !== undefined && current - last < ERROR_THROTTLE_MS) {
+    return false
+  }
+  lastErrorAt.set(message, current)
+  return true
+}
+
+/** 清空错误节流记录与挂载状态（测试用）。 */
+export function _resetErrorThrottle() {
+  lastErrorAt.clear()
+  api = null
+  queue.length = 0
+}
+
 export function toastSuccess(description: string) {
   dispatch((mod) => mod.toast.success("操作成功", { description }))
 }
@@ -33,5 +56,6 @@ export function toastError(description: string) {
 }
 
 export function toastErrorMessage(message: string) {
+  if (!shouldShowError(message)) return
   dispatch((mod) => mod.toast.error(message))
 }

@@ -1,0 +1,127 @@
+import logging
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from sqlmodel import select
+
+from app import crud
+from app.api.deps import SessionDep, get_current_active_superuser
+from app.core.audit import record_audit
+from app.core.config import settings
+from app.core.limiter import limiter
+from app.models import Message, NewPassword, User, UserUpdate
+from app.utils import (
+    generate_password_reset_token,
+    generate_reset_password_email,
+    send_email,
+    verify_password_reset_token,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["login"])
+
+
+@router.post("/password-recovery/{email}")
+@limiter.limit(settings.RATE_LIMIT_RECOVERY)
+def recover_password(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    email: str,
+    session: SessionDep,
+) -> Message:
+    """
+    Password Recovery
+    """
+    user = crud.get_user_by_email(session=session, email=email)
+
+    # Always return the same response to prevent email enumeration attacks
+    # Only send email if user actually exists
+    if user:
+        if not settings.emails_enabled:
+            # 邮件未配置（SMTP_HOST / EMAILS_FROM_EMAIL 缺失）时不能让接口 500，
+            # 仍返回同样的防枚举响应，服务端记日志提醒运维
+            logger.warning(
+                "Password recovery requested for an existing user, but email is "
+                "not configured (SMTP_HOST / EMAILS_FROM_EMAIL missing); "
+                "no email sent."
+            )
+        else:
+            password_reset_token = generate_password_reset_token(
+                email=email, token_version=user.token_version
+            )
+            email_data = generate_reset_password_email(
+                email_to=user.email, email=email, token=password_reset_token
+            )
+            send_email(
+                email_to=user.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+            )
+    return Message(
+        message="If that email is registered, we sent a password recovery link"
+    )
+
+
+@router.post("/reset-password/")
+@limiter.limit(settings.RATE_LIMIT_RECOVERY)
+def reset_password(
+    request: Request,  # noqa: ARG001  # slowapi 限流装饰器要求注入
+    session: SessionDep,
+    body: NewPassword,
+) -> Message:
+    """
+    Reset password
+    """
+    claims = verify_password_reset_token(token=body.token)
+    if not claims:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    # Lock the row so two concurrent submissions of one link cannot both succeed.
+    user = session.exec(
+        select(User).where(User.email == claims.email).with_for_update()
+    ).first()
+    if not user or user.token_version != claims.token_version:
+        # Same error for unknown users and used/stale links to avoid enumeration
+        raise HTTPException(status_code=400, detail="Invalid token")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    user_in_update = UserUpdate(password=body.new_password)
+    crud.update_user(
+        session=session,
+        db_user=user,
+        user_in=user_in_update,
+    )
+    record_audit(
+        session=session,
+        actor=user,
+        action="user.password_reset",
+        resource_type="user",
+        resource_id=user.id,
+    )
+    return Message(message="Password updated successfully")
+
+
+@router.post(
+    "/password-recovery-html-content/{email}",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_class=HTMLResponse,
+)
+def recover_password_html_content(email: str, session: SessionDep) -> Any:
+    """
+    HTML Content for Password Recovery
+    """
+    user = crud.get_user_by_email(session=session, email=email)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="The user with this username does not exist in the system.",
+        )
+    password_reset_token = generate_password_reset_token(
+        email=email, token_version=user.token_version
+    )
+    email_data = generate_reset_password_email(
+        email_to=user.email, email=email, token=password_reset_token
+    )
+
+    return HTMLResponse(content=email_data.html_content)

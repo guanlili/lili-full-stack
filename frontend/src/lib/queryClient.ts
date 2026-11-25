@@ -19,6 +19,12 @@ const handleApiError = (error: Error) => {
   toastErrorMessage(describeApiError(error))
 }
 
+/**
+ * 导出纯分流函数便于单测：401 触发登出，其余状态码只弹中文提示。
+ * 不直接挂在缓存实例上，避免测试依赖 React Query 内部 onError 调用时序。
+ */
+export const handleQueryError = handleApiError
+
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: handleApiError,

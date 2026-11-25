@@ -63,8 +63,8 @@ def test_ready_check_timeout_and_recovery(client: TestClient) -> None:
 def test_recover_password_without_email_configured(client: TestClient) -> None:
     """找回密码：邮件未配置时不再 500，仍返回防枚举的成功文案，且不尝试发信"""
     with (
-        patch("app.api.routes.login.settings") as mock_settings,
-        patch("app.api.routes.login.send_email") as mock_send,
+        patch("app.api.routes.auth.password.settings") as mock_settings,
+        patch("app.api.routes.auth.password.send_email") as mock_send,
     ):
         mock_settings.emails_enabled = False
         r = client.post(
@@ -161,6 +161,37 @@ def test_request_log_omits_email_path_parameter(
     email = random_email()
     with caplog.at_level(logging.INFO, logger="app.main"):
         client.post(f"{settings.API_V1_STR}/password-recovery/{email}")
-    request_logs = [r.getMessage() for r in caplog.records if r.name == "app.main"]
-    assert any("/password-recovery/{email}" in line for line in request_logs)
-    assert all(email not in line for line in request_logs)
+    request_records = [r for r in caplog.records if r.name == "app.main"]
+    logged_paths = [getattr(r, "path", "") for r in request_records]
+    assert any("/password-recovery/{email}" in path for path in logged_paths)
+    # 消息体与结构化字段都不得带出邮箱；记录完整序列化后再次校验
+    serialized = [r.getMessage() + str(getattr(r, "path", "")) for r in request_records]
+    assert all(email not in line for line in serialized)
+
+
+def test_unhandled_exception_returns_generic_500() -> None:
+    """未捕获异常走全局兜底处理器：统一中文 500 体，不透出内部异常细节。"""
+    from fastapi import APIRouter
+
+    from app.main import app
+
+    crash_router = APIRouter(tags=["utils"])
+
+    @crash_router.get("/_crash/")
+    def crash() -> None:
+        raise RuntimeError("internal secret detail must not leak")
+
+    app.include_router(crash_router, prefix=settings.API_V1_STR)
+    # 独立 client：关闭 raise_server_exceptions，才能拿到兜底处理器写出的 500 响应体
+    with TestClient(app, raise_server_exceptions=False) as c:
+        try:
+            r = c.get(f"{settings.API_V1_STR}/_crash/")
+            assert r.status_code == 500
+            assert r.json() == {"detail": "服务器开了小差，请稍后重试"}
+            assert "internal secret detail" not in r.text
+        finally:
+            app.router.routes = [
+                route
+                for route in app.router.routes
+                if getattr(route, "path", "") != f"{settings.API_V1_STR}/_crash/"
+            ]
