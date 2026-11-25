@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query"
 import axios from "axios"
+import { describeApiError } from "@/lib/apiError"
 import { expireSession } from "@/lib/session"
 import { toastErrorMessage } from "@/lib/toast"
 
@@ -9,14 +10,13 @@ const handleApiError = (error: Error) => {
   // 一并登出会把正常用户误踢下线（例如访问一个无权限的资源）
   if (axios.isAxiosError(error) && error.response?.status === 401) {
     expireSession()
+    toastErrorMessage(describeApiError(error))
     return
   }
 
-  if (axios.isAxiosError(error) && error.response?.status === 403) {
-    toastErrorMessage("没有权限执行此操作")
-  } else {
-    toastErrorMessage("请求失败，请稍后重试")
-  }
+  // 其余状态码（403/422/500/网络异常等）统一收敛为中文友好提示，
+  // 不透出原始英文报错或 Pydantic 校验数组
+  toastErrorMessage(describeApiError(error))
 }
 
 export const queryClient = new QueryClient({
@@ -24,11 +24,7 @@ export const queryClient = new QueryClient({
     onError: handleApiError,
   }),
   mutationCache: new MutationCache({
-    onError: (error) => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        handleApiError(error)
-      }
-    },
+    onError: handleApiError,
   }),
   defaultOptions: {
     queries: {
