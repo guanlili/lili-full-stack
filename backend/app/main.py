@@ -17,6 +17,12 @@ from app.core.config import settings
 from app.core.db import engine
 from app.core.limiter import limiter, rate_limit_exceeded_handler
 from app.core.logging import configure_logging
+from app.core.middleware import (
+    ALLOWED_CORS_HEADERS,
+    ALLOWED_CORS_METHODS,
+    OriginCheckMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 # 应用日志统一格式（幂等）；独立运行的脚本（prestart 等）各自调用同一入口
 configure_logging()
@@ -130,8 +136,13 @@ if settings.all_cors_origins:
         CORSMiddleware,
         allow_origins=settings.all_cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=list(ALLOWED_CORS_METHODS),
+        allow_headers=list(ALLOWED_CORS_HEADERS),
     )
+
+# 安全头兜底（后端被直连时仍带基础头）；写操作 Origin 白名单校验补 CSRF 纵深。
+# add_middleware 后注册的位于外层：Origin 校验先于业务，安全头贴近响应补默认值。
+app.add_middleware(OriginCheckMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
