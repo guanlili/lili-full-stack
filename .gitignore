@@ -9,8 +9,9 @@ node_modules/
 
 # Claude Code 运行时自动生成 / 个人配置，不需要提交
 .agents/
-.claude/skills/
 .claude/settings.local.json
+# UI 契约与技能库随模板一起提交（仅忽略本机私有设置）
+!.claude/skills/
 
 # 部署临时配置（失败时也不得提交）
 .env.new
@@ -26,3 +27,7 @@ __pycache__/
 playwright-report/
 test-results/
 frontend/playwright/.cache/
+
+# Python 运行时缓存
+__pycache__/
+*.pyc

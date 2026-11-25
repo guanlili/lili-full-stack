@@ -114,6 +114,10 @@ e2e 会自己拉起 uvicorn 和 vite，需要本机数据库在跑（`docker com
 
 详见 `AI_RULES.md`。客户项目的业务约定详见 `PROJECT_CONTEXT.md`。
 
+## UI 工程规范（强制挂载）
+
+任何前端页面开发、视觉重构、参考截图精装修，必须先遵循 `.claude/skills/scaffold-ui-contract/SKILL.md`（脚手架 UI 总控契约）：审美底线（4/8px 网格、克制中性灰、多层柔和阴影、完整 Hover/Active/Focus 态）、看图精装修工作流、令牌纪律与工程禁区（业务组件禁止硬编码色值、优先复用 `components/ui/` 原子组件；严禁改动 TanStack Query、`src/client/` 生成客户端与表单校验逻辑）。互补设计指南见 `.claude/skills/frontend-design/`。
+
 ## 项目管理（devledger，记账硬性规范）
 
 本仓库由人类 + 多个 AI 协作开发，项目管理主账本是 GitHub Project `#25`（devledger skill，工具与方法论在本机 ~/.agents/skills/devledger）。
