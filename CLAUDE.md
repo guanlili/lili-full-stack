@@ -65,6 +65,21 @@ uv run bash scripts/tests-start.sh
 
 后端改动模型或接口后，必须确认前端生成客户端和相关测试已同步。生成文件不得手动编辑。
 
+### 全栈联动铁律
+
+- **后端 FastAPI 路由 / Pydantic Schema 一旦改动，必须运行 `cd frontend && npm run generate-client` 同步 `src/client/`**；严禁前端手写 `fetch` / `axios` 或绕过生成客户端直连接口。
+- `src/client/` 为 OpenAPI 自动生成产物，禁止手工编辑；类型不一致时以后端 Schema 为准重新生成。
+
+### 分支命名与提交前自检
+
+- 功能开发分支命名 `feat/<简述>`，修复分支命名 `fix/<简述>`；`master` 为受保护分支，禁止直推，一律走 PR + CI。
+- 提交前本地必须跑通前端 `npm run lint` 与 `npm run build`（涉及后端时另跑后端 lint + 测试），避免线上 CI 跑红重来。
+
+### 前端页面组装约定
+
+- 新写业务页面优先组合 `frontend/src/components/patterns/` 业务模式组件（`PageContainer` / `PageHeader` / `EmptyState` / `TableSkeleton` / `StatCardGrid` / `StatCard`），再在其上叠加业务区块；禁止手写裸标题、纯文本空状态或塌陷占位。
+- 详细 UI 契约见 `.claude/skills/scaffold-ui-contract/SKILL.md`。
+
 ## 验证与交付
 
 后端：

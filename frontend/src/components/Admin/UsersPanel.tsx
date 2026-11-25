@@ -9,8 +9,14 @@ import {
   Users,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import {
+  EmptyState,
+  StatCard,
+  StatCardGrid,
+  TableSkeleton,
+} from "@/components/patterns"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
@@ -92,47 +98,32 @@ export default function UsersPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          {
-            label: "账号总数",
-            value: query.isPending ? "—" : total,
-            icon: Users,
-            description: "系统中的所有账号",
-          },
-          {
-            label: "本页已启用",
-            value:
-              query.data?.data.filter((account) => account.is_active).length ??
-              "—",
-            icon: ShieldCheck,
-            description: "可正常登录的账号",
-          },
-          {
-            label: "本页管理员",
-            value:
-              query.data?.data.filter((account) => account.is_superuser)
-                .length ?? "—",
-            icon: ShieldCheck,
-            description: "拥有系统完整管理权限",
-          },
-        ].map((item) => (
-          <Card key={item.label} className="gap-0 py-0 shadow-none">
-            <CardContent className="flex items-start justify-between p-3 sm:p-5">
-              <div>
-                <p className="text-sm text-muted-foreground">{item.label}</p>
-                <p className="my-2 text-3xl font-semibold tracking-tight">
-                  {item.value}
-                </p>
-                <p className="hidden text-xs text-muted-foreground sm:block">
-                  {item.description}
-                </p>
-              </div>
-              <item.icon className="hidden size-5 text-muted-foreground md:block" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatCardGrid>
+        <StatCard
+          label="账号总数"
+          value={query.isPending ? "—" : total}
+          icon={Users}
+          description="系统中的所有账号"
+        />
+        <StatCard
+          label="本页已启用"
+          value={
+            query.data?.data.filter((account) => account.is_active).length ??
+            "—"
+          }
+          icon={ShieldCheck}
+          description="可正常登录的账号"
+        />
+        <StatCard
+          label="本页管理员"
+          value={
+            query.data?.data.filter((account) => account.is_superuser).length ??
+            "—"
+          }
+          icon={ShieldCheck}
+          description="拥有系统完整管理权限"
+        />
+      </StatCardGrid>
       <Card className="gap-0 overflow-hidden py-0 shadow-none">
         <div className="flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -244,11 +235,11 @@ export default function UsersPanel() {
             <TableBody>
               {query.isPending ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length + 1}
-                    className="h-40 text-center text-muted-foreground"
-                  >
-                    正在加载账号…
+                  <TableCell colSpan={columns.length + 1} className="p-0">
+                    <TableSkeleton
+                      rows={6}
+                      columns={["w-12", "flex-1", "flex-1", "w-32"]}
+                    />
                   </TableCell>
                 </TableRow>
               ) : table.getRowModel().rows.length ? (
@@ -290,13 +281,21 @@ export default function UsersPanel() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length + 1}
-                    className="h-40 text-center text-muted-foreground"
-                  >
-                    {search || status !== "all"
-                      ? "当前页没有符合条件的账号，请调整筛选或切换页面。"
-                      : "还没有用户，点击新增用户创建第一个账号。"}
+                  <TableCell colSpan={columns.length + 1} className="p-0">
+                    <EmptyState
+                      icon={Users}
+                      title={
+                        search || status !== "all"
+                          ? "没有符合条件的账号"
+                          : "还没有用户"
+                      }
+                      description={
+                        search || status !== "all"
+                          ? "请调整搜索关键词或筛选条件后重试。"
+                          : "点击新增用户，创建第一个账号。"
+                      }
+                      action={user?.is_superuser ? <AddUser /> : undefined}
+                    />
                   </TableCell>
                 </TableRow>
               )}
