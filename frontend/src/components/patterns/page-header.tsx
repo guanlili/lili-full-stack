@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 
-interface PageHeaderProps extends Omit<React.ComponentProps<"header">, "title"> {
+interface PageHeaderProps
+  extends Omit<React.ComponentProps<"header">, "title"> {
   /** 眉标（分组/面包屑层级），可选 */
   eyebrow?: string
   /** 页面主标题 */
