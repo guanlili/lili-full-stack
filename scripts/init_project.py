@@ -9,6 +9,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,8 +115,8 @@ def initialize(
     slug: str,
     port: int,
     registration: bool,
-    clean_sample: bool,
-    reset_pm: bool,
+    clean_sample: bool = False,
+    reset_pm: bool = False,
 ) -> None:
     if (root / ".env").exists() or (root / ".env").is_symlink():
         raise ValueError(".env 已存在，拒绝读取或覆盖；请在新复制的项目中初始化")
@@ -196,13 +197,19 @@ def main() -> None:
         action="store_true",
         help="跳过交互式确认，直接执行示例代码清理与 PM 重置",
     )
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        help="禁止读取标准输入；未显式开启的清理/重置项按关闭处理（供 CI/自动化调用）",
+    )
     args = parser.parse_args()
     slug = args.slug or re.sub(r"[^a-z0-9-]+", "-", args.name.lower()).strip("-")
     slug = slug or "project-" + hashlib.sha256(args.name.encode()).hexdigest()[:8]
 
     clean_sample = args.clean_sample
     reset_pm = args.reset_pm
-    if not args.yes and not (clean_sample or reset_pm):
+    interactive = not (args.yes or args.no_interactive) and sys.stdin.isatty()
+    if interactive and not (clean_sample or reset_pm):
         # 交互式确认：默认建议清理示例代码并重置 PM 状态
         clean_sample = _confirm("是否清理模板自带的示例业务代码（Job 表 / private 路由）？", default=True)
         reset_pm = _confirm("是否重置 devledger 项目编号为占位符？", default=True)
