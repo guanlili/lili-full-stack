@@ -17,6 +17,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -64,15 +66,16 @@
 
   /* 字体族：正文 / 几何标题 / 等宽数字 */
   --font-family-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui,
     sans-serif;
   --font-family-display:
-    "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont,
-    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    "Plus Jakarta Sans Variable", "Plus Jakarta Sans", "Inter Variable",
+    "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
   --font-family-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
-    "Liberation Mono", monospace;
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, "Liberation Mono", monospace;
 
   /* 中性灰阶：三档拉开层级，主色同相点缀 */
   --background: oklch(0.995 0.002 182);
