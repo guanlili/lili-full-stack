@@ -40,7 +40,7 @@ Cloud Agents run the stack natively. Laptop development still uses `docker compo
 - Node.js 24 lives at `/usr/local/bin` and is linked into `~/.local/bin` so it is chosen ahead of the image Node 22. Python 3.14 comes from `uv` (`uv sync` at the repo root). Run backend commands from `backend/` with `uv run`.
 - PostgreSQL 18 listens on localhost. Boot creates `.env` from `.env.example` when it is missing and sets `POSTGRES_SERVER=localhost` (Compose uses the hostname `db`). Do not commit `.env`.
 - Boot starts Postgres, runs `backend/scripts/prestart.sh` (migrations and seed data), then serves tmux sessions `backend` (port 8000) and `frontend` (port 5173).
-- Backend checks: `cd backend && uv run bash scripts/lint.sh` and `uv run bash scripts/tests-start.sh` (database `app_test`). Frontend checks: `cd frontend && npm run lint && npm test && npm run build`, then `bash scripts/check-csp-hash.sh`.
+- Backend checks: `cd backend && uv run bash scripts/lint.sh` and `uv run bash scripts/tests-start.sh` (database `app_test`). Frontend checks: `cd frontend && npm run lint && npm test && npm run build`, then `bash scripts/check-csp-hash.sh`. Optional `pre-commit install` (brew) runs ruff/biome fast checks on commit; ty and tests stay on CI/manual commands.
 - e2e (`cd frontend && npx playwright test`) starts its own servers. Stop the running tmux `backend` and `frontend` first: otherwise it reuses them, and when they run with login rate limiting on (the default) later specs fail with 429.
 - The Vite dev server may rewrite import order in `frontend/src/routeTree.gen.ts`. Leave that file unstaged unless routes changed.
 - The local admin is `FIRST_SUPERUSER` in `.env`. In dev mode the login page button “填入演示账号” fills those credentials.

@@ -1,0 +1,26 @@
+# 提交前本地钩子。复用项目既有工具链（uv / node），不另建隔离环境，
+# 钩子版本与仓库 lock 保持一致。
+#
+# 启用（一次性）：
+#   brew install pre-commit
+#   pre-commit install
+# 手动全量校验：pre-commit run --all-files
+#
+# 说明：ty（后端类型检查）与测试不在钩子内运行，避免每次提交卡顿；
+# 它们由 CI 与本地 scripts/lint.sh、pytest 兜底。
+repos:
+  - repo: local
+    hooks:
+      - id: backend-ruff
+        name: backend ruff (lint + format check)
+        entry: bash -c 'cd backend && uv run ruff check app tests && uv run ruff format app tests --check'
+        language: system
+        pass_filenames: false
+        files: ^backend/
+
+      - id: frontend-biome
+        name: frontend biome (lint + format)
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        pass_filenames: false
+        files: ^frontend/

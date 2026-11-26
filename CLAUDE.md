@@ -99,6 +99,13 @@ npm test
 npm run build
 ```
 
+可选：安装 pre-commit 后 `pre-commit install`，提交前自动跑后端 ruff 与前端 biome 快检；ty 类型检查与测试仍由 CI 与上述命令兜底。
+
+```bash
+brew install pre-commit
+pre-commit install
+```
+
 构建之后校验 CSP 内联脚本哈希（改过 `frontend/index.html` 的主题脚本就要重算，否则 CI 拦下），再跑 e2e：
 
 ```bash
