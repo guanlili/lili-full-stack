@@ -137,6 +137,47 @@ def test_ready_check_silent_tcp_peer(after_handshake: bool) -> None:
     asyncio.run(scenario())
 
 
+def test_test_email_not_configured_returns_400(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """超管测试邮件：邮件未配置时返回 400，不尝试发信。"""
+    with patch("app.api.routes.utils.settings") as mock_settings:
+        mock_settings.emails_enabled = False
+        r = client.post(
+            f"{settings.API_V1_STR}/utils/test-email/",
+            headers=superuser_token_headers,
+            params={"email_to": random_email()},
+        )
+    assert r.status_code == 400
+    assert "Email is not configured" in r.json()["detail"]
+
+
+def test_test_email_sends_when_configured(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    with (
+        patch("app.api.routes.utils.settings") as mock_settings,
+        patch("app.api.routes.utils.send_email") as mock_send,
+    ):
+        mock_settings.emails_enabled = True
+        r = client.post(
+            f"{settings.API_V1_STR}/utils/test-email/",
+            headers=superuser_token_headers,
+            params={"email_to": random_email()},
+        )
+    assert r.status_code == 201
+    assert r.json() == {"message": "Test email sent"}
+    mock_send.assert_called_once()
+
+
+def test_readiness_dsn_strips_driver() -> None:
+    from app.api.routes.utils import get_readiness_dsn
+
+    dsn = get_readiness_dsn()
+    assert dsn.startswith("postgresql://")
+    assert "postgresql+psycopg" not in dsn
+
+
 def test_request_id_echoes_safe_client_value(client: TestClient) -> None:
     r = client.get(
         f"{settings.API_V1_STR}/utils/health-check/",

@@ -1,3 +1,6 @@
+import logging
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, col, select
@@ -189,3 +192,27 @@ def test_audit_log_retention_prunes_expired_rows(
     actions = [item["action"] for item in r.json()["data"]]
     assert "test.retention_old" not in actions
     assert "test.retention_fresh" in actions
+
+
+def test_audit_persist_failure_does_not_propagate(
+    db: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """审计落库失败只记日志，不向外抛出影响业务事务。"""
+    from app.core.audit import record_audit
+
+    failing_session = MagicMock()
+    failing_session.commit.side_effect = RuntimeError("audit db down")
+    cm = MagicMock()
+    cm.__enter__.return_value = failing_session
+    cm.__exit__.return_value = False
+
+    with (
+        patch("app.core.audit.Session", return_value=cm),
+        caplog.at_level(logging.ERROR, logger="app.core.audit"),
+    ):
+        # 不应向外抛异常
+        record_audit(session=db, actor=None, action="test.fail", resource_type="test")
+
+    assert any(
+        "Failed to persist audit" in record.getMessage() for record in caplog.records
+    )
