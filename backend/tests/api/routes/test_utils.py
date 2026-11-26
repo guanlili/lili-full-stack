@@ -141,11 +141,13 @@ def test_test_email_not_configured_returns_400(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
     """超管测试邮件：邮件未配置时返回 400，不尝试发信。"""
-    r = client.post(
-        f"{settings.API_V1_STR}/utils/test-email/",
-        headers=superuser_token_headers,
-        params={"email_to": random_email()},
-    )
+    with patch("app.api.routes.utils.settings") as mock_settings:
+        mock_settings.emails_enabled = False
+        r = client.post(
+            f"{settings.API_V1_STR}/utils/test-email/",
+            headers=superuser_token_headers,
+            params={"email_to": random_email()},
+        )
     assert r.status_code == 400
     assert "Email is not configured" in r.json()["detail"]
 
