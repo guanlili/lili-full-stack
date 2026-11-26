@@ -609,3 +609,25 @@ def test_login_prunes_expired_refresh_tokens(client: TestClient, db: Session) ->
     ).all()
     assert [token.id for token in remaining if token.id == expired_id] == []
     assert len(remaining) == 1
+
+
+def test_refresh_tokens_cascade_delete_with_user(db: Session) -> None:
+    # DB 外键 ON DELETE CASCADE：绕过应用层清理直接删用户，其刷新令牌应被数据库一并删除
+    user = create_user(
+        session=db,
+        user_create=UserCreate(email=random_email(), password=random_lower_string()),
+    )
+    db.add(
+        RefreshToken(
+            token_hash=uuid.uuid4().hex,
+            user_id=user.id,
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+    )
+    db.commit()
+    db.delete(user)
+    db.commit()
+    remaining = db.exec(
+        select(RefreshToken).where(col(RefreshToken.user_id) == user.id)
+    ).all()
+    assert remaining == []
