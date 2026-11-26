@@ -31,3 +31,4 @@ frontend/playwright/.cache/
 # Python 运行时缓存
 __pycache__/
 *.pyc
+.venv/

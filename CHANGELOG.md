@@ -2,6 +2,18 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.26 — 安全加固、测试加厚与模板骨架收口（#116–#134）
+
+- **后端安全加固**（#122）：写操作 Origin 校验中间件防 CSRF 跨站提交；CORS 收紧允许的方法与请求头；后端补安全头兜底，与 nginx 下发形成纵深。
+- **会话外键级联**（#128）：`RefreshToken.user_id` 补外键 `ON DELETE CASCADE`，删除用户时连带吊销其全部刷新令牌，避免孤儿凭证。
+- **剥离未接线上传骨架**（#126）：移除 FileAsset 模型/导出、上传目录与 body 大小配置，迁移 `0007` drop `file_asset` 表，compose 去掉附件卷与挂载；备份链路从「DB+附件联合快照」重构为纯 PostgreSQL 快照（校验/恢复同步精简）。
+- **工程化收口**（#130）：新增 pre-commit 本地快检钩子（后端 ruff、前端 biome）；复核安全头后端/nginx 重复下发属刻意纵深、基础镜像维持 tag 策略（与 dependabot 月度升级不冲突）。
+- **后端测试加厚**（#124、#132）：补权限判定、密码重置 token 纯函数；再补鉴权依赖、邮件 TLS/SSL/禁用分支、审计落库失败兜底、工具路由分支。153 passed，总覆盖率 97%，`deps`/`audit`/`routes/utils` 达 100%。
+- **前端 RTL 加厚**（#120、#134）：首批表单组件单测；再补 patterns（EmptyState/PageContainer/PageHeader/StatCard/TableSkeleton）、通用组件（Footer/LoadingScreen/ErrorComponent 错误边界）、`useIsMobile` 响应式钩子与主题触发器渲染。63 passed，biome 与 build 全绿。
+- **此前批次补记**（#116、#118）：全局 API 错误码中文映射、`init-project` 开新坑脚本；底座加固批次覆盖可观测性（GlitchTip/JSON 日志/500 兜底）、测试覆盖门槛、前端依赖与 sourcemap、后端模型/路由领域拆分、交付运维（镜像/备份/checklist/CSP 模板）。
+
+数据库：迁移 `0007` 清理 `file_asset` 表、`0008` 为 refresh token 补外键级联，`0008` 为 head。API：请求/响应契约不变，无需重新生成客户端。兼容性：无破坏性变更；上传能力如需恢复，按带 MIME 白名单、大小校验与 owner 隔离的样板另行加回。
+
 ## 2026.11.23 — 指令层同步、合并门禁与供应链可见性（#104）
 
 - **指令文档同步到代码**：`CLAUDE.md` 的邮件测试端口更正为 Mailpit 的 8025、项目结构补 `frontend/src/lib/`、后端测试补"宿主机运行需 `POSTGRES_SERVER=localhost`"；`CLAUDE.md`、`AGENTS.md`、`docs/module-development.md`、`/new-feature` 四处验证步骤补上 CSP 哈希校验与 e2e（含运行方式，以及"compose 的 backend/frontend 在运行时先停，否则复用的服务带登录限流会触发 429"）。`module-development.md` 新增「模板约定」五条：敏感操作写审计、公开或高频端点必须限流、前端通知走 `@/lib/toast`、改凭据与不可逆操作要密码复核、同前缀页面用目录式路由。
