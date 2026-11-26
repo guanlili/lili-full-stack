@@ -40,7 +40,7 @@ class RefreshToken(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     token_hash: str = Field(max_length=64, unique=True, index=True)
-    user_id: uuid.UUID = Field(index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
     expires_at: datetime = Field(sa_type=DateTime(timezone=True))
     revoked_at: datetime | None = Field(
         default=None,
