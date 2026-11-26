@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 安装（或预览）数据库+附件定时备份的 systemd timer，并可选接入 healthchecks 类
+# 安装（或预览）数据库定时备份的 systemd timer，并可选接入 healthchecks 类
 # 死人开关告警：成功 ping <url>，失败 ping <url>/fail——timer 静默坏掉时对方也会
 # 因"长时间无 ping"告警。在服务器部署目录内运行。
 #
@@ -79,7 +79,7 @@ RUNNER_CONTENT="$(
 EXEC_START="'$(printf '%s' "$RUNNER" | sed "s/'/'\\\\''/g; s/%/%%/g")'"
 
 SERVICE_UNIT="[Unit]
-Description=Database and uploads backup for $PROJECT_NAME
+Description=Database backup for $PROJECT_NAME
 
 [Service]
 Type=oneshot

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline, consistent database + uploads snapshots for the Compose deployment."""
+"""Offline, consistent database snapshots for the Compose deployment."""
 
 import argparse
 import fcntl
@@ -8,32 +8,11 @@ import json
 import shutil
 import subprocess
 import sys
-import tarfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-FILES = ("database.dump", "uploads.tar")
-UPLOAD_BACKUP = """
-import pathlib, sys, tarfile
-root = pathlib.Path('/app/uploads')
-with tarfile.open(fileobj=sys.stdout.buffer, mode='w|') as archive:
-    for path in sorted(root.iterdir()):
-        if not path.is_file() or path.is_symlink():
-            raise RuntimeError('Uploads must contain regular files only')
-        archive.add(path, arcname=path.name, recursive=False)
-"""
-UPLOAD_CHECK = """
-import pathlib
-root = pathlib.Path('/app/uploads')
-if any(root.iterdir()):
-    raise RuntimeError('Refusing to restore into a non-empty uploads volume')
-"""
-UPLOAD_RESTORE = """
-import sys, tarfile
-with tarfile.open(fileobj=sys.stdin.buffer, mode='r|') as archive:
-    archive.extractall('/app/uploads', filter='data')
-"""
+FILES = ("database.dump",)
 
 
 def digest(path: Path) -> str:
@@ -51,11 +30,6 @@ def verify(snapshot: Path) -> None:
             raise RuntimeError(f"Missing or invalid backup file: {name}")
         if digest(path) != manifest["sha256"][name]:
             raise RuntimeError(f"Checksum mismatch: {name}")
-    # Validate every member before changing the target database or volume.
-    with tarfile.open(snapshot / "uploads.tar") as archive:
-        for member in archive:
-            if not member.isfile() or Path(member.name).name != member.name:
-                raise RuntimeError("Unsafe entry in uploads archive")
 
 
 class Deployment:
@@ -66,20 +40,6 @@ class Deployment:
     def run(self, *args: str, **kwargs):
         return subprocess.run(
             [*self.command, *args], cwd=self.project, check=True, **kwargs
-        )
-
-    def helper(self, code: str, **kwargs):
-        return self.run(
-            "run",
-            "--rm",
-            "--no-deps",
-            "-T",
-            "--entrypoint",
-            "python",
-            "backend",
-            "-c",
-            code,
-            **kwargs,
         )
 
     @contextmanager
@@ -117,8 +77,6 @@ class Deployment:
                     'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc',
                     stdout=target,
                 )
-            with (snapshot / FILES[1]).open("xb") as target:
-                self.helper(UPLOAD_BACKUP, stdout=target)
             manifest = {
                 "format": 1,
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -170,8 +128,7 @@ class Deployment:
         )
         if result.stdout.strip() != "0":
             raise RuntimeError("Refusing to restore into a non-empty database")
-        self.helper(UPLOAD_CHECK)
-        # Validate the dump header before writing either store.
+        # Validate the dump header before writing the target store.
         with (snapshot / FILES[0]).open("rb") as source:
             self.run(
                 "exec",
@@ -193,11 +150,7 @@ class Deployment:
                 "--no-owner --no-acl --exit-on-error --single-transaction",
                 stdin=source,
             )
-        with (snapshot / FILES[1]).open("rb") as source:
-            self.helper(UPLOAD_RESTORE, stdin=source)
-        print(
-            "Restored database and uploads. Start the application and verify readiness."
-        )
+        print("Restored database. Start the application and verify readiness.")
 
 
 def main() -> None:
@@ -221,11 +174,9 @@ def main() -> None:
         print(deployment.backup(path))
     elif args.action == "verify":
         verify(path)
-        print("Backup checksums and archive entries verified.")
+        print("Backup checksums verified.")
     elif not args.confirm_restore:
-        parser.error(
-            "Restore requires --confirm-restore and an empty target database/volume"
-        )
+        parser.error("Restore requires --confirm-restore and an empty target database")
     else:
         deployment.restore(path)
 

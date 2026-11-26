@@ -125,8 +125,6 @@ class Settings(BaseSettings):
     RATE_LIMIT_SIGNUP: str = "5/minute"
     # 审计日志保留天数；0 = 永久保留（模板默认）。配置后超管查看审计时顺带清理过期行
     AUDIT_LOG_RETENTION_DAYS: int = 0
-    UPLOAD_DIR: str = "/app/uploads"
-    MAX_UPLOAD_SIZE_MB: int = 10
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":

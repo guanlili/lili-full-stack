@@ -85,7 +85,7 @@
 | 会话事务/并发 | `backend/app/crud.py`、`api/routes/login.py`、`api/routes/users.py`、`models.py` | 密码更新统一撤销 Refresh Token；保留业务事务扩展 |
 | 前端刷新 | `frontend/src/lib/session*.ts`、`hooks/useAuth.ts`、`main.tsx` | 配套同步，避免只有短 Token 而没有自动刷新；保留项目自己的错误反馈 |
 | Access Token 默认值 | `backend/app/core/config.py` | 新签发 Token 默认 15 分钟；已签发 Token 保持原到期时间；已有环境配置可能覆盖默认值 |
-| 联合备份 | `scripts/backup_restore.py`、`scripts/test_backup_restore.py` | 当前针对平铺本地附件目录；其他文件存储需适配 |
+| 数据库备份 | `scripts/backup_restore.py`、`scripts/test_backup_restore.py` | 纯 PostgreSQL 快照；接入其他文件存储需自行扩展 |
 | CI/维护互斥 | `.github/workflows/deploy.yml`、`.gitignore` | 服务器需要 `flock`；备份与部署必须使用同一部署目录 |
 | 开发规范 | `docs/module-development.md`、`.claude/commands/new-feature.md` | 保留客户额外规范 |
 
@@ -95,6 +95,6 @@
 
 ## 最小模板功能收敛
 
-当前版本移除了通用配置、文件、CSV 导入导出和后台任务接口，以及对应默认界面与客户端。已有客户项目若使用这些能力，应保留自身实现，不直接删除。历史表和附件 volume 不随本次升级删除；认证、可配置角色权限和内部审计继续保留。
+当前版本移除了通用配置、文件、CSV 导入导出和后台任务接口，以及对应默认界面与客户端。已有客户项目若使用这些能力，应保留自身实现，不直接删除。遗留的文件表由迁移 `0007` 清理，模板不再挂载附件 volume；认证、可配置角色权限和内部审计继续保留。
 
 角色权限复用既有 role/permission 关联表，无表结构变更。部署前置初始化会补充缺失的权限项和默认访客角色，不覆盖已配置的权限。未分配角色的普通账号使用访客策略，显式分配的多个角色取权限并集。
