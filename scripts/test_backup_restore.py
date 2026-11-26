@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Backup validation tests; --integration exercises two disposable app_test databases."""
 
-import io
 import json
 import subprocess
 import sys
-import tarfile
 import tempfile
 import unittest
 import uuid
@@ -20,12 +18,8 @@ if INTEGRATION:
 
 
 class BackupValidationTests(unittest.TestCase):
-    def make_snapshot(self, root: Path, unsafe: bool = False) -> Path:
+    def make_snapshot(self, root: Path) -> Path:
         (root / FILES[0]).write_bytes(b"PGDMP-test")
-        with tarfile.open(root / FILES[1], "w") as archive:
-            member = tarfile.TarInfo("../escape" if unsafe else "attachment.txt")
-            member.size = 3
-            archive.addfile(member, io.BytesIO(b"abc"))
         (root / "manifest.json").write_text(
             json.dumps(
                 {
@@ -44,17 +38,8 @@ class BackupValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Checksum mismatch"):
                 verify(root)
 
-    def test_path_traversal_rejected_before_restore(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = self.make_snapshot(Path(tmp), unsafe=True)
-            deployment = Deployment(root)
-            with patch.object(deployment, "run") as run:
-                with self.assertRaisesRegex(RuntimeError, "Unsafe entry"):
-                    deployment.restore(root)
-                run.assert_not_called()
-
     def test_failed_backup_is_removed_and_services_restart(self):
-        for stage in ("dump", "tar", "verify"):
+        for stage in ("dump", "verify"):
             with self.subTest(stage=stage), tempfile.TemporaryDirectory() as tmp:
                 deployment = Deployment(Path(tmp))
                 destination = Path(tmp) / "backups"
@@ -75,14 +60,8 @@ class BackupValidationTests(unittest.TestCase):
                             raise RuntimeError("dump failed")
                     return subprocess.CompletedProcess([], 0)
 
-                def helper(_code, **kwargs):
-                    kwargs["stdout"].write(b"partial archive")
-                    if stage == "tar":
-                        raise RuntimeError("tar failed")
-
                 with (
                     patch.object(deployment, "run", side_effect=run),
-                    patch.object(deployment, "helper", side_effect=helper),
                     patch(
                         "backup_restore.verify",
                         side_effect=RuntimeError("verify failed"),
@@ -98,28 +77,24 @@ class BackupValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.make_snapshot(Path(tmp))
             deployment = Deployment(root)
-            with (
-                patch.object(
-                    deployment,
-                    "run",
-                    side_effect=[
-                        subprocess.CompletedProcess([], 0, stdout=""),
-                        subprocess.CompletedProcess([], 0),
-                        subprocess.CompletedProcess([], 0, stdout="1\n"),
-                    ],
-                ),
-                patch.object(deployment, "helper") as helper,
+            with patch.object(
+                deployment,
+                "run",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0, stdout=""),
+                    subprocess.CompletedProcess([], 0),
+                    subprocess.CompletedProcess([], 0, stdout="1\n"),
+                ],
             ):
                 with self.assertRaisesRegex(RuntimeError, "non-empty database"):
                     deployment.restore(root)
-                helper.assert_not_called()
 
 
 @unittest.skipUnless(
     INTEGRATION, "Pass --integration to run disposable Docker restore drill"
 )
 class RestoreIntegrationTests(unittest.TestCase):
-    def test_database_and_attachment_round_trip(self):
+    def test_database_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             deployments = []
@@ -147,14 +122,11 @@ services:
     image: python:3.12-slim
     entrypoint: [python]
     command: ["-c", "import time; time.sleep(3600)"]
-    volumes:
-      - uploads:/app/uploads
   frontend:
     image: python:3.12-slim
     command: [python, -c, "import time; time.sleep(3600)"]
 volumes:
   database:
-  uploads:
 """)
                     deployments.append(Deployment(project))
                 source, target = deployments
@@ -171,9 +143,6 @@ volumes:
                     "-c",
                     "CREATE TABLE restore_probe (id int primary key, value text); "
                     "INSERT INTO restore_probe VALUES (1, 'restored');",
-                )
-                source.helper(
-                    "from pathlib import Path; Path('/app/uploads/probe.bin').write_bytes(bytes(range(256)))"
                 )
                 snapshot = source.backup(root / "backups")
                 running = source.run(
@@ -202,9 +171,6 @@ volumes:
                     text=True,
                 )
                 self.assertEqual(restored.stdout.strip(), "restored")
-                target.helper(
-                    "from pathlib import Path; assert Path('/app/uploads/probe.bin').read_bytes() == bytes(range(256))"
-                )
                 with self.assertRaisesRegex(RuntimeError, "non-empty database"):
                     target.restore(snapshot)
             finally:

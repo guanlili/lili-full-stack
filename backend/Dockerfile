@@ -54,7 +54,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # 非 root 运行：容器内进程被攻破时不直接持有 root 身份
 # （frontend 镜像保持官方 nginx 默认行为：master 需 root 绑定 80 特权端口）
 RUN addgroup --system app && adduser --system --ingroup app app \
-    && mkdir -p /app/uploads \
     && chown -R app:app /app
 USER app
 

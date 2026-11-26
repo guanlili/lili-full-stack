@@ -10,8 +10,6 @@ from sqlmodel import SQLModel
 
 from app.models.access import AccessPublic, PageAccessPublic
 from app.models.asset import (
-    FileAsset,
-    FileAssetPublic,
     SystemSetting,
     SystemSettingPublic,
     SystemSettingUpdate,
@@ -51,8 +49,6 @@ __all__ = [
     "SQLModel",
     "AccessPublic",
     "PageAccessPublic",
-    "FileAsset",
-    "FileAssetPublic",
     "SystemSetting",
     "SystemSettingPublic",
     "SystemSettingUpdate",
