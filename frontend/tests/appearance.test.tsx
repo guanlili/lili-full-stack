@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { after, afterEach, test } from "node:test"
 import "./helpers/dom"
 import { cleanup, render, within } from "@testing-library/react"
-import { closeJSDom } from "./helpers/dom"
 import { ThemeProvider } from "@/components/theme-provider"
+import { closeJSDom } from "./helpers/dom"
 
 // ThemeProvider 初始化读取 prefers-color-scheme，jsdom 无 matchMedia，补桩。
 window.matchMedia = (() => ({
