@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -24,7 +25,7 @@ export const ADMIN_PASSWORD = appEnv.FIRST_SUPERUSER_PASSWORD ?? "changethis"
 
 /** 生成不冲突的临时测试账号（普通用户走注册流程，注册开放开关由 .env 控制）。 */
 export function randomAccount() {
-  const stamp = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
+  const stamp = `${Date.now()}-${randomInt(10_000, 100_000)}`
   return {
     email: `e2e-${stamp}@example.com`,
     password: `E2e-${stamp}-pass`,
