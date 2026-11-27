@@ -2,45 +2,28 @@
 
 本仓库是用于外包项目快速交付的全栈模板。
 
-- 模板级流程和规则：`CLAUDE.md`、`AI_RULES.md`
-- 客户项目上下文：`PROJECT_CONTEXT.md`
-
 ## 阅读顺序与权威来源
 
 开始工作前按以下顺序阅读：
 
 1. 当前任务和用户明确要求
-2. `PROJECT_CONTEXT.md`
-3. `CLAUDE.md`（项目结构和开发流程）
-4. `AI_RULES.md`（编码、安全、权限和部署规范）
+2. `PROJECT_CONTEXT.md`（客户项目上下文，只补充客户差异，不降低安全、数据隔离或权限要求）
+3. `CLAUDE.md`（项目结构、本地命令、开发与交付流程）
+4. `AI_RULES.md`（编码、安全、权限、前后端联动与部署规则）
 
-流程和项目结构以 `CLAUDE.md` 为准；编码、安全、权限和部署以 `AI_RULES.md` 为准。项目上下文只补充客户差异，不得降低安全、数据隔离或权限要求。无法解决冲突时，保留现状并报告冲突。
+冲突时：流程与项目结构以 `CLAUDE.md` 为准；编码、安全、权限与部署以 `AI_RULES.md` 为准；项目上下文只补充客户差异。无法解决冲突时，保留现状并报告冲突。
 
-## 必须遵守
+## 规则速查（细则见 `AI_RULES.md`）
 
-- 修改前检查 `git status`，保留用户已有修改，只改当前任务相关文件。
-- 不读取、输出或提交 `.env`、Token、密码、私钥等敏感信息。
-- 修改数据库模型或字段时生成并检查 Alembic 迁移。
-- 修改 API 请求/响应契约后运行 `cd frontend && npm run generate-client`。
-- 前端不得手写 API URL，也不得手动修改 `frontend/src/client/` 中的生成文件。
-- 后端测试必须使用独立测试库 `app_test`，不得连接开发库或生产库。
-- 401 只表示 Token 无效或过期；403 表示已登录但权限不足。
+- **敏感信息**：不读取、输出或提交 `.env`、Token、密码、私钥等密钥。
+- **数据隔离**：后端测试只使用独立测试库 `app_test`，不连接开发库或生产库。
+- **数据库变更**：模型或字段改动后生成并检查 Alembic 迁移，不得直接改库。
+- **前后端联动**：API 契约变更后运行 `cd frontend && npm run generate-client`；前端不得手写 API URL，也不得手改 `src/client/` 生成文件。
+- **错误语义**：401 仅表示 Token 无效或过期；403 表示已登录但权限不足。
+- **改动范围**：修改前先检查 `git status`，保留用户已有修改，只改当前任务相关文件。
 
-## 交付前
+## 交付前（命令与检查项见 `CLAUDE.md`「验证与交付」）
 
-- 运行与改动相关的测试、类型检查、构建和 lint。
+- 跑通与改动相关的测试、类型检查、构建和 lint。
 - 确认迁移、生成客户端、权限测试、e2e 和 CSP 哈希校验没有遗漏。
-- 汇报修改内容、验证命令、验证结果和未验证事项。
-- 不提交客户密钥、生产 `.env` 或临时调试文件。
-
-## Cursor Cloud specific instructions
-
-Cloud Agents run the stack natively. Laptop development still uses `docker compose` as described in `CLAUDE.md`.
-
-- Node.js 24 lives at `/usr/local/bin` and is linked into `~/.local/bin` so it is chosen ahead of the image Node 22. Python 3.14 comes from `uv` (`uv sync` at the repo root). Run backend commands from `backend/` with `uv run`.
-- PostgreSQL 18 listens on localhost. Boot creates `.env` from `.env.example` when it is missing and sets `POSTGRES_SERVER=localhost` (Compose uses the hostname `db`). Do not commit `.env`.
-- Boot starts Postgres, runs `backend/scripts/prestart.sh` (migrations and seed data), then serves tmux sessions `backend` (port 8000) and `frontend` (port 5173).
-- Backend checks: `cd backend && uv run bash scripts/lint.sh` and `uv run bash scripts/tests-start.sh` (database `app_test`). Frontend checks: `cd frontend && npm run lint && npm test && npm run build`, then `bash scripts/check-csp-hash.sh`. Optional `pre-commit install` (brew) runs ruff/biome fast checks on commit; ty and tests stay on CI/manual commands.
-- e2e (`cd frontend && npx playwright test`) starts its own servers. Stop the running tmux `backend` and `frontend` first: otherwise it reuses them, and when they run with login rate limiting on (the default) later specs fail with 429.
-- The Vite dev server may rewrite import order in `frontend/src/routeTree.gen.ts`. Leave that file unstaged unless routes changed.
-- The local admin is `FIRST_SUPERUSER` in `.env`. In dev mode the login page button “填入演示账号” fills those credentials.
+- 不提交客户密钥、生产 `.env` 或临时调试文件；汇报修改内容、验证命令、验证结果和未验证事项。

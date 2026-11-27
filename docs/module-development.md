@@ -36,7 +36,7 @@
 - **公开或高频端点必须限流**：未登录即可访问、或每次请求都会查数据库的接口，挂 `@limiter.limit(settings.RATE_LIMIT_XXX)`，限额在 `config.py` 里定义成命名常量。测试套件全局关闭了限流，限流行为在 `test_rate_limit.py` 单独验证，新增限额时同步补用例。参考 `backend/app/api/routes/login.py`。
 - **前端通知走 `@/lib/toast`**：直接用它，或用封装它的 `useCustomToast`；不要 `import "sonner"`。Toaster 是懒加载的，直接引入会让 sonner 重新进入静态打包。
 - **改凭据、不可逆操作要密码复核**：修改邮箱、密码和注销账号这类操作必须校验 `current_password`，错误返回 400，仅凭 access token 不够。参考 `UserUpdateMe` 和 `UserDeleteMe`。
-- **同前缀的页面用目录式路由**：TanStack Router 的文件名里点号表示嵌套，`admin.audit.tsx` 是 `/admin` 的子路由，父页面没有 `<Outlet />` 就渲染不出来。写成 `routes/_layout/admin/index.tsx` 加 `admin/audit.tsx`。新增路由文件后先运行 `npx vite build` 重新生成路由树，否则 `tsc` 会报新路由的路径不在类型里。
+- **同前缀的页面用目录式路由**：TanStack Router 的文件名里点号表示嵌套，`admin.audit.tsx` 是 `/admin` 的子路由，父页面没有 `<Outlet />` 就渲染不出来。写成 `routes/_layout/admin/index.tsx` 加 `admin/audit.tsx`。新增路由文件后先运行 `npx vite build` 重新生成路由树，否则 `tsc` 会报新路由的路径不在类型里。`routeTree.gen.ts` 由路由树自动生成；除路由变更外，vite 重排的 import 顺序不要暂存。
 
 ## 新页面必须接入角色权限
 

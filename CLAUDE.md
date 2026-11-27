@@ -14,7 +14,7 @@
 backend/app/
 ├── api/routes/     # FastAPI 路由（每个业务模块一个文件）
 ├── core/           # 配置、安全、数据库连接
-├── models.py       # SQLModel 数据模型（数据库表结构）
+├── models/         # SQLModel 数据模型（按领域拆分：user/role/auth/audit 等）
 ├── crud.py         # 数据库增删改查操作
 └── main.py         # 应用入口
 
@@ -57,18 +57,17 @@ uv run bash scripts/tests-start.sh
 
 根据变更类型执行必要步骤，不要为无关变更创建空迁移：
 
-1. **数据库变化**：修改 `models.py`，补充 CRUD、路由和测试。
+1. **数据库变化**：修改 `models/` 领域模型，补充 CRUD、路由和测试。
 2. **数据库迁移**：运行 `docker compose exec backend alembic revision --autogenerate -m "add xxx"`，检查迁移内容后再 `alembic upgrade head`。
 3. **API 契约变化**：后端接口稳定后运行 `cd frontend && npm run generate-client`。
 4. **前端页面**：在 `routes/_layout/` 添加页面，在 `frontend/src/components/Sidebar/AppSidebar.tsx` 的导航项中按需添加链接。
 5. **仅业务逻辑变化**：补充或更新后端 API/CRUD 测试；不需要生成迁移时不要生成迁移。
 
-后端改动模型或接口后，必须确认前端生成客户端和相关测试已同步。生成文件不得手动编辑。
+完整的模块交付顺序与验收场景见 [docs/module-development.md](docs/module-development.md)；联动规则以 `AI_RULES.md` 为准。
 
 ### 全栈联动铁律
 
-- **后端 FastAPI 路由 / Pydantic Schema 一旦改动，必须运行 `cd frontend && npm run generate-client` 同步 `src/client/`**；严禁前端手写 `fetch` / `axios` 或绕过生成客户端直连接口。
-- `src/client/` 为 OpenAPI 自动生成产物，禁止手工编辑；类型不一致时以后端 Schema 为准重新生成。
+前后端联动规则（契约变更后 `generate-client`、禁止手写 API URL、禁止手改 `src/client/` 生成产物、模型变更走迁移、测试用独立 `app_test` 库）统一以 `AI_RULES.md`「前后端联动」为准，此处不再复述。
 
 ### 分支命名与提交前自检
 
