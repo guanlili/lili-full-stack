@@ -2,6 +2,14 @@
 
 版本用于标记模板维护批次，不代表客户项目的业务版本。
 
+## 2026.11.27 — 规范文档去重、租户隔离清单与 e2e 随机数加固（#142、#144、#146）
+
+- **规范文档去重收敛**（#142）：确立规则单一真相源——`AI_RULES.md` 为编码/安全/权限/联动/部署规则唯一定义处；`CLAUDE.md` 保留项目结构、命令与流程；`docs/module-development.md` 为模块交付清单；`AGENTS.md` 收敛为入口导航 + 规则速查 + 指针，删除旧云端环境残留段。规则细节只在一处维护，其余文档以指针引用。
+- **组织/租户隔离清单**（#144）：新增 `docs/tenant-isolation.md`（决策与实施清单：按需判断、设计决策、后端/前端实施、测试验收、禁止事项），`PROJECT_CONTEXT.md`、`README.md` 补指针；修正一处引用漂移——`FileAsset` 骨架早前已剥离，个人数据一条只保留现存的 `Job.owner_user_id`。
+- **e2e 随机数加固**（#146）：测试账号随机段由 `Math.random()` 改为 `node:crypto` 的 `randomInt(10_000, 100_000)`，消除 CodeQL `insecure-randomness` 告警；复核后端覆盖率门槛（omit 启动/种子脚本 + `fail_under=90`）已在 CI 生效，本地 153 passed、omit 口径 98%，门槛维持不变。
+
+数据库/API：无变更。兼容性：纯文档与 e2e 测试辅助改动，无模型、契约与配置默认值改动。
+
 ## 2026.11.26 — 依赖收口：后端 uv / 前端 npm patch-minor（#138、#139）
 
 - **后端 uv 升级**（#138、#139）：fastapi 0.162.2→0.165.0、sentry-sdk 2.74.0→2.77.0、psycopg 3.3.8→3.3.9、pwdlib 0.3.1→0.4.2、python-multipart 0.0.33→0.0.34、email-validator 2.3.0→2.4.0。pwdlib 仍走稳定公开 API，旧 argon2 哈希兼容。
