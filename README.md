@@ -156,7 +156,7 @@ cd frontend && npm test                             # 前端（Node 内置测试
 
 ## Claude Code 自定义指令
 
-项目内置了 4 个自定义斜杠命令，在 Claude Code 中可直接使用：
+项目内置了 5 个自定义斜杠命令，在 Claude Code 中可直接使用：
 
 | 指令 | 用途 |
 |------|------|
