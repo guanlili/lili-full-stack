@@ -206,6 +206,7 @@ Claude Code 会按标准流程自动创建订单模块的全部后端和前端�
 模板版本见 [CHANGELOG.md](CHANGELOG.md)，同步流程见 [docs/template-upgrades.md](docs/template-upgrades.md)。按功能挑选并适配改动，保留客户业务和部署差异；不要整目录覆盖客户项目。
 
 业务模块统一交付清单见 [docs/module-development.md](docs/module-development.md)。
+组织/租户隔离为按需能力，决策与实施清单见 [docs/tenant-isolation.md](docs/tenant-isolation.md)。
 
 ---
 
