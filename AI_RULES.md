@@ -1,6 +1,6 @@
 # AI Development Guidelines & Coding Standards
 
-本文件只维护编码、安全、权限和部署规则。具体技术版本以 `backend/pyproject.toml`、`frontend/package.json` 和 `.python-version` 为准。
+本文件是编码、安全、权限和部署规则的**唯一真相源**；`CLAUDE.md`、`AGENTS.md`、`docs/module-development.md` 引用本文件规则，不在各自文档里重复定义细则。具体技术版本以 `backend/pyproject.toml`、`frontend/package.json` 和 `.python-version` 为准。
 
 ## 技术边界
 
